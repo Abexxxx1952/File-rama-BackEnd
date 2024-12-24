@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { AnyPgTable } from 'drizzle-orm/pg-core';
 
 // Function to recursively find schema files
 function findSchemaFiles(dir: string, fileList: string[] = []): string[] {
@@ -21,7 +22,10 @@ function findSchemaFiles(dir: string, fileList: string[] = []): string[] {
   return fileList;
 }
 
-type DatabaseSchema = Record<string, any>;
+export interface DatabaseSchema {
+  [key: string]: AnyPgTable;
+}
+
 export async function loadDatabaseSchema(): Promise<DatabaseSchema> {
   // Start searching from the src folder
   const srcDir = path.join(__dirname, '../'); // src/database -> src

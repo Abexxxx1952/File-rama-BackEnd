@@ -1,5 +1,5 @@
 {
-  "cSpell.words": ["pglite", "postgis"],
+  "cSpell.words": ["frameguard", "hsts", "pglite", "postgis"],
   "editor.formatOnSave": true,
   "[javascript]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
