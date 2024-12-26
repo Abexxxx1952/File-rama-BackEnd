@@ -5,9 +5,9 @@ import {
 } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
-import fastifyHelmet from '@fastify/helmet'; 
+import fastifyHelmet from '@fastify/helmet';
 import { createSwagger } from './swagger/swagger';
-
+import fastifyCookie from '@fastify/cookie';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -30,23 +30,23 @@ async function bootstrap() {
     }),
   );
 
- await app.register(
-    fastifyHelmet, {
-      crossOriginEmbedderPolicy: false,
-      frameguard: { action: 'deny' },
-      hidePoweredBy: true,
-      hsts: true,
-      ieNoOpen: true,
-      noSniff: true,
-      referrerPolicy: { policy: 'no-referrer' },
-      xssFilter: true,
-    },
-  ); 
+  await app.register(fastifyHelmet, {
+    crossOriginEmbedderPolicy: false,
+    frameguard: { action: 'deny' },
+    hidePoweredBy: true,
+    hsts: true,
+    ieNoOpen: true,
+    noSniff: true,
+    referrerPolicy: { policy: 'no-referrer' },
+    xssFilter: true,
+  });
+
+  await app.register(fastifyCookie);
 
   createSwagger(app);
 
   const PORT = process.env.PORT || 4000;
-  
+
   try {
     await app.listen(PORT, () => {
       console.log(`Running on Port ${PORT}`);

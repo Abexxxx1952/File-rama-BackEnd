@@ -15,6 +15,7 @@ import { RegistrationSources } from '../auth/types/providersOAuth.enum';
 import { CreateUserDto } from '../dto/create.dto';
 import { UpdateUserDto } from '../dto/update.dto';
 import { User } from '../types/users';
+import { ParseUserOAuth } from '../auth/types/parseUserOAuth';
 
 @Injectable()
 export class UsersRepository extends BaseAbstractRepository<
@@ -75,13 +76,13 @@ export class UsersRepository extends BaseAbstractRepository<
     }
   }
   public async createUserOAuth(
-    createUserOAuthDto: CreateUserDto,
+    createUserOAuthDto: ParseUserOAuth,
   ): Promise<User> {
     try {
       const entity = {
         ...createUserOAuthDto,
         registrationSources: [RegistrationSources.Local],
-        files: [],
+        password: '',
       };
 
       const user = await this.create(entity);
@@ -106,11 +107,10 @@ export class UsersRepository extends BaseAbstractRepository<
   public async updateUserById(id: string, data: UpdateUserDto): Promise<User> {
     let dataUpdate: User;
     if (data.password) {
-      dataUpdate.password = await this.hashPassword(data.password);
-
       let existUser: User;
       try {
         existUser = await this.findById(id);
+        dataUpdate.password = await this.hashPassword(data.password);
       } catch (error) {
         if (error instanceof NotFoundException) {
           throw new ForbiddenException('Access Denied');

@@ -216,10 +216,7 @@ export abstract class BaseAbstractRepository<
    * @param data - The data to update.
    * @returns The updated entity.
    */
-  public async updateById(
-    id: string | number,
-    data: InferInsertModel<Schema>,
-  ): Promise<T> {
+  public async updateById(id: string | number, data: Partial<T>): Promise<T> {
     try {
       const result = await this.database
         .update(this.table)

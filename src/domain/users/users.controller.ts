@@ -15,50 +15,45 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-
 import { ApiTags } from '@nestjs/swagger';
 import { UUID } from 'crypto';
-/* import { CurrentUser } from '../../common/decorators/currentUser.decorator'; */
-/* import { ParseRequestBodyWhenLogging } from '../../common/decorators/setMetadataRequestBodyLogging.decorator'; */
-/* import { LoggerHelperInterceptor } from '../../common/interceptors/loggerHelper.interceptor'; */
+import { CurrentUser } from '../../common/decorators/currentUser.decorator';
+import { ParseRequestBodyWhenLogging } from '../../common/decorators/setMetadataRequestBodyLogging.decorator';
+import { LoggerHelperInterceptor } from '../../common/interceptors/loggerHelper.interceptor';
 import { UsersRepository } from './repository/users.repository';
-/* import { AuthService } from './auth/auth.service'; */
+import { AuthService } from './auth/auth.service';
 import { User } from './types/users';
 /* import { FindUserByConditionsDto } from './dto/findByConditions.dto'; */
-/* import {
-  FindOneUserWithConditionsDto,
-  FindAllUserWithConditionsDto,
-} from './dto/findWithConditions.dto'; */
-/* import {
+
+import {
   CreateUserLocalDto,
   CreateUserDtoLocalWithoutPassword,
-} from './dto/createLocal.dto'; */
-/* import { LoginLocalUserDtoWithoutPassword } from './dto/loginUserLocal.dto'; */
-/* import { UpdateUserDto } from './dto/update.dto'; */
+} from './dto/createLocal.dto';
+import { LoginLocalUserDtoWithoutPassword } from './dto/loginUserLocal.dto';
+import { UpdateUserDto } from './dto/update.dto';
 import { PaginationParams } from '../../database/paginationDto/pagination.dto';
 import { FindUserByConditionsDto } from './dto/findByConditions.dto';
-/* import { LocalAuthGuard } from './auth/guards/localAuth.guard'; */
-/* import { RefreshTokenAuthGuard } from './auth/guards/refreshToken.guard'; */
-/* import { AttachedUserWithRt } from './auth/types/attachedUserWithRt'; */
-/* import { AttachedUser } from './auth/types/attachedUser'; */
-/* import { AccessTokenAuthGuard } from './auth/guards/accessToken.guard'; */
-/* import { GoogleGuard } from './auth/guards/google.guard'; */
-/* import { GitHubGuard } from './auth/guards/gitHub.guard'; */
-/* import {
+import { LocalAuthGuard } from './auth/guards/localAuth.guard';
+import { RefreshTokenAuthGuard } from './auth/guards/refreshToken.guard';
+import { AttachedUserWithRt } from './auth/types/attachedUserWithRt';
+import { AttachedUser } from './auth/types/attachedUser';
+import { AccessTokenAuthGuard } from './auth/guards/accessToken.guard';
+import { GoogleGuard } from './auth/guards/google.guard';
+import { GitHubGuard } from './auth/guards/gitHub.guard';
+import { RefreshTokenFromHeadersAuthGuard } from './auth/guards/refreshTokenFromHeaders.guard';
+import { FastifyReply } from 'fastify';
+import {
   CacheOptions,
   CacheInterceptor,
   CacheOptionInvalidateCache,
-} from '../../common/interceptors/cache.interceptor'; */
-/* import { AccessTokenFromHeadersAuthGuard } from './auth/guards/accessTokenFromHeaders.guard'; */
-/* import { Tokens } from './auth/types/tokens'; */
-/* import { RefreshTokenFromHeadersAuthGuard } from './auth/guards/refreshTokenFromHeaders.guard'; */
-/* import {
+} from '../../common/interceptors/cache.interceptor';
+import { AccessTokenFromHeadersAuthGuard } from './auth/guards/accessTokenFromHeaders.guard';
+import { Tokens } from './auth/types/tokens';
+import {
   ApiUsersGet,
   ApiUsersGetFindById,
-  ApiUsersPostFindOneBy,
-  ApiUsersPostFindManyBy,
-  ApiUsersPostFindOneWith,
-  ApiUsersPostFindAllWith,
+  ApiUsersGetFindOneBy,
+  ApiUsersGetFindManyBy,
   ApiUsersPostRegistration,
   ApiUsersPostLoginLocal,
   ApiUsersPostLogOut,
@@ -69,18 +64,17 @@ import { FindUserByConditionsDto } from './dto/findByConditions.dto';
   ApiUsersGetLoginGitHubCallback,
   ApiUsersGetStatus,
   ApiUsersPatchUpdate,
-  ApiUsersDeleteDelete,
+  ApiUsersDeleteDeleteUser,
   ApiUsersGetStatusFromHeaders,
   ApiUsersPostLogOutFromHeaders,
   ApiUsersPostRefreshFromHeaders,
   ApiUsersPatchUpdateFromHeaders,
-  ApiUsersDeleteDeleteFromHeaders,
-} from '../../swagger/user'; */
+  ApiUsersDeleteDeleteUserFromHeaders,
+} from '../../swagger/users';
 
 @ApiTags('v1/users')
 @Controller('v1/users')
-
-/* @UseInterceptors(LoggerHelperInterceptor) */
+@UseInterceptors(LoggerHelperInterceptor)
 export class UsersController {
   constructor(
     @Inject('UsersRepository')
@@ -90,24 +84,24 @@ export class UsersController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
-  /*  @UseInterceptors(CacheInterceptor) */
-  /*   @ApiUsersGet() */
+  @UseInterceptors(CacheInterceptor)
+  @ApiUsersGet()
   async findAll(@Query() { offset, limit }: PaginationParams): Promise<User[]> {
     return await this.usersRepository.findAll(offset, limit);
   }
 
   @Get('findById/:id')
   @HttpCode(HttpStatus.OK)
-  /*  @UseInterceptors(CacheInterceptor) */
-  /*   @ApiUsersGetFindById() */
+  @UseInterceptors(CacheInterceptor)
+  @ApiUsersGetFindById()
   async findOneById(@Param('id', ParseUUIDPipe) id: UUID): Promise<User> {
     return await this.usersRepository.findById(id);
   }
 
   @Get('findOneBy')
   @HttpCode(HttpStatus.OK)
-  /*  @UseInterceptors(CacheInterceptor) */
-  /*   @ApiUsersPostFindOneBy() */
+  @UseInterceptors(CacheInterceptor)
+  @ApiUsersGetFindOneBy()
   async findOneByCondition(
     @Query() condition: { condition: string },
   ): Promise<User> {
@@ -127,8 +121,8 @@ export class UsersController {
 
   @Get('findManyBy')
   @HttpCode(HttpStatus.OK)
-  /*   @UseInterceptors(CacheInterceptor) */
-  /*    @ApiUsersPostFindManyBy() */
+  @UseInterceptors(CacheInterceptor)
+  @ApiUsersGetFindManyBy()
   async findManyByCondition(
     @Query() { offset, limit }: PaginationParams,
     @Query() condition: { condition: string },
@@ -152,9 +146,9 @@ export class UsersController {
   }
 
   @Get('status')
-  /*  @UseGuards(AccessTokenAuthGuard) */
+  @UseGuards(AccessTokenAuthGuard)
   @HttpCode(HttpStatus.OK)
-  /*  @ApiUsersGetStatus() */
+  @ApiUsersGetStatus()
   async status(@CurrentUser() currentUser: AttachedUser): Promise<User> {
     return await this.usersRepository.status(currentUser.email);
   }
@@ -163,9 +157,9 @@ export class UsersController {
   @UseGuards(AccessTokenFromHeadersAuthGuard)
   @HttpCode(HttpStatus.OK)
   @ApiUsersGetStatusFromHeaders()
-  async setCookiesFromHeaders(
+  async statusFromHeaders(
     @CurrentUser() currentUser: AttachedUser,
-  ): Promise<UserEntity> {
+  ): Promise<User> {
     return await this.usersRepository.status(currentUser.email);
   }
 
@@ -174,13 +168,11 @@ export class UsersController {
   @HttpCode(HttpStatus.CREATED)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/users/', '/api/v1/stats/usersStats'],
+    cacheKey: ['/api/v1/users/'],
   })
   @UseInterceptors(CacheInterceptor)
   @ApiUsersPostRegistration()
-  async create(
-    @Body() createUserLocalDto: CreateUserLocalDto,
-  ): Promise<UserEntity> {
+  async create(@Body() createUserLocalDto: CreateUserLocalDto): Promise<User> {
     return await this.usersRepository.createUserLocal(createUserLocalDto);
   }
 
@@ -190,9 +182,9 @@ export class UsersController {
   @HttpCode(HttpStatus.OK)
   @ApiUsersPostLoginLocal()
   async loginLocal(
-    @CurrentUser() currentUser: UserEntity,
-    @Res({ passthrough: true }) response: Response,
-  ): Promise<UserEntity> {
+    @CurrentUser() currentUser: AttachedUser,
+    @Res({ passthrough: true }) response: FastifyReply,
+  ): Promise<User> {
     return await this.authService.login(currentUser, response);
   }
 
@@ -202,7 +194,7 @@ export class UsersController {
   @ApiUsersPostLogOut()
   async logout(
     @CurrentUser() currentUser: AttachedUser,
-    @Res({ passthrough: true }) response: Response,
+    @Res({ passthrough: true }) response: FastifyReply,
   ): Promise<AttachedUser> {
     return await this.authService.logout(currentUser, response);
   }
@@ -213,7 +205,7 @@ export class UsersController {
   @ApiUsersPostLogOutFromHeaders()
   async logoutFromHeaders(
     @CurrentUser() currentUser: AttachedUser,
-    @Res({ passthrough: true }) response: Response,
+    @Res({ passthrough: true }) response: FastifyReply,
   ): Promise<AttachedUser> {
     return await this.authService.logout(currentUser, response);
   }
@@ -224,7 +216,7 @@ export class UsersController {
   @ApiUsersPostRefresh()
   async refreshTokens(
     @CurrentUser() currentUserWithRt: AttachedUserWithRt,
-    @Res({ passthrough: true }) response: Response,
+    @Res({ passthrough: true }) response: FastifyReply,
   ): Promise<Tokens> {
     return await this.authService.refreshTokens(currentUserWithRt, response);
   }
@@ -235,7 +227,7 @@ export class UsersController {
   @ApiUsersPostRefreshFromHeaders()
   async refreshTokensFromHeaders(
     @CurrentUser() currentUserWithRt: AttachedUserWithRt,
-    @Res({ passthrough: true }) response: Response,
+    @Res({ passthrough: true }) response: FastifyReply,
   ): Promise<Tokens> {
     return await this.authService.refreshTokens(currentUserWithRt, response);
   }
@@ -245,7 +237,7 @@ export class UsersController {
   @HttpCode(HttpStatus.FOUND)
   @ApiUsersGetLoginGoogle()
   // eslint-disable-next-line @typescript-eslint/no-empty-function
-  googleAuth() {}
+  *googleAuth() {}
 
   @Get('loginGoogle/callback')
   @UseGuards(GoogleGuard)
@@ -257,8 +249,8 @@ export class UsersController {
   @UseInterceptors(CacheInterceptor)
   @ApiUsersGetLoginGoogleCallback()
   async googleAuthCallBack(
-    @CurrentUser() currentUser: UserEntity,
-    @Res({ passthrough: true }) response: Response,
+    @CurrentUser() currentUser: AttachedUser,
+    @Res({ passthrough: true }) response: FastifyReply,
   ): Promise<void> {
     return await this.authService.loginWithProvider(currentUser, response);
   }
@@ -280,8 +272,8 @@ export class UsersController {
   @UseInterceptors(CacheInterceptor)
   @ApiUsersGetLoginGitHubCallback()
   async gitHubAuthCallBack(
-    @CurrentUser() currentUser: UserEntity,
-    @Res({ passthrough: true }) response: Response,
+    @CurrentUser() currentUser: AttachedUser,
+    @Res({ passthrough: true }) response: FastifyReply,
   ): Promise<void> {
     return await this.authService.loginWithProvider(currentUser, response);
   }
@@ -299,8 +291,8 @@ export class UsersController {
   async updateUser(
     @CurrentUser('id') currentUserId: string,
     @Body() updateUserDto: UpdateUserDto,
-  ): Promise<UpdateResult> {
-    return await this.usersRepository.updateOneUserByIdSoft(
+  ): Promise<User> {
+    return await this.usersRepository.updateUserById(
       currentUserId,
       updateUserDto,
     );
@@ -319,8 +311,8 @@ export class UsersController {
   async updateUserFromHeaders(
     @CurrentUser('id') currentUserId: string,
     @Body() updateUserDto: UpdateUserDto,
-  ): Promise<UpdateResult> {
-    return await this.usersRepository.updateOneUserByIdSoft(
+  ): Promise<User> {
+    return await this.usersRepository.updateUserById(
       currentUserId,
       updateUserDto,
     );
@@ -331,10 +323,8 @@ export class UsersController {
   @HttpCode(HttpStatus.OK)
   @CacheOptionInvalidateCache({ cache: CacheOptions.InvalidateAllCache })
   @UseInterceptors(CacheInterceptor)
-  @ApiUsersDeleteDelete()
-  async deleteUser(
-    @CurrentUser('id') currentUserId: string,
-  ): Promise<UserEntity> {
+  @ApiUsersDeleteDeleteUser()
+  async deleteUser(@CurrentUser('id') currentUserId: string): Promise<User> {
     return await this.usersRepository.removeUserById(currentUserId);
   }
 
@@ -343,10 +333,10 @@ export class UsersController {
   @HttpCode(HttpStatus.OK)
   @CacheOptionInvalidateCache({ cache: CacheOptions.InvalidateAllCache })
   @UseInterceptors(CacheInterceptor)
-  @ApiUsersDeleteDeleteFromHeaders()
+  @ApiUsersDeleteDeleteUserFromHeaders()
   async deleteUserFromHeaders(
     @CurrentUser('id') currentUserId: string,
-  ): Promise<UserEntity> {
+  ): Promise<User> {
     return await this.usersRepository.removeUserById(currentUserId);
   }
 }

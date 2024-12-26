@@ -52,7 +52,7 @@ export interface BaseInterfaceRepository<
    * @param data - The data to update.
    * @returns The updated entity.
    */
-  updateById(id: string | number, data: InferInsertModel<Schema>): Promise<T>;
+  updateById(id: string | number, data: Partial<T>): Promise<T>;
 
   /**
    * Delete an entity by its ID.
