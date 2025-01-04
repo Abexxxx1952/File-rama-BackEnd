@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
   IsArray,
   IsNotEmpty,
@@ -5,8 +6,7 @@ import {
   IsString,
   ValidateNested,
 } from 'class-validator';
-import { Payload } from '../types/payload';
-import { Type } from 'class-transformer';
+import { Payloads } from '../types/payloads';
 
 export class UpdateUserDto {
   @IsOptional()
@@ -27,6 +27,6 @@ export class UpdateUserDto {
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => Payload)
-  readonly payload?: Payload[];
+  @Type(() => Payloads)
+  readonly payload?: Payloads[];
 }

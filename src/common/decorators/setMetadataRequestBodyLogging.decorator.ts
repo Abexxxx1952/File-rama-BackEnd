@@ -1,5 +1,4 @@
 import { SetMetadata } from '@nestjs/common';
-
 import { Class } from 'type-fest';
 
 export const REQUEST_BODY_LOGGING_KEY = 'request_body_logging';

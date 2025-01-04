@@ -1,28 +1,33 @@
-import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
+import { forwardRef, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
+import { DatabaseModule } from '@/database/database.module';
+import { UsersModule } from '../users.module';
+import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { LocalStrategy } from './strategies/local.strategy';
-import { AccessTokenStrategy } from './strategies/accessToken.strategy';
-import { RefreshTokenStrategy } from './strategies/refreshToken.strategy';
-import { GoogleStrategy } from './strategies/google.strategy';
-import { GitHubStrategy } from './strategies/gitHub.strategy';
-import { AccessTokenFromHeadersStrategy } from './strategies/accessTokenFromHeaders.strategy';
-import { RefreshTokenFromHeadersStrategy } from './strategies/refreshTokenFromHeaders.strategy';
+import { EmailConfirmationModule } from './email-confirmation/email-confirmation.module';
+import { PasswordRecoveryModule } from './password-recovery/password-recovery.module';
+import { TokensRepository } from './repository/tokens.repository';
+import { TwoFactorAuthModule } from './two-factor-auth/two-factor-auth.module';
 
 @Module({
-  imports: [ConfigModule, JwtModule],
-  controllers: [],
+  imports: [
+    ConfigModule,
+    DatabaseModule,
+    JwtModule,
+    forwardRef(() => UsersModule),
+    EmailConfirmationModule,
+    PasswordRecoveryModule,
+    TwoFactorAuthModule,
+  ],
+  controllers: [AuthController],
   providers: [
     AuthService,
-    LocalStrategy,
-    AccessTokenStrategy,
-    AccessTokenFromHeadersStrategy,
-    RefreshTokenStrategy,
-    RefreshTokenFromHeadersStrategy,
-    GoogleStrategy,
-    GitHubStrategy,
+    {
+      provide: 'TokensRepository',
+      useClass: TokensRepository,
+    },
   ],
-  exports: [AuthService],
+  exports: ['TokensRepository'],
 })
 export class AuthModule {}

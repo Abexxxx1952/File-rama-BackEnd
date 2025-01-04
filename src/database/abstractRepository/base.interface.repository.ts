@@ -10,14 +10,14 @@ export interface BaseInterfaceRepository<
    * @param data - Data to create the entity.
    * @returns The created entity.
    */
-  create(data: InferInsertModel<Schema>): Promise<T>;
+  create(data: Partial<T>): Promise<T>;
 
   /**
    * Create multiple entities.
    * @param data - Data to create multiple entities.
    * @returns An array of created entities.
    */
-  createMany(data: InferInsertModel<Schema>[]): Promise<T[]>;
+  createMany(data: Partial<T>[]): Promise<T[]>;
 
   /**
    * Find an entity by its ID.

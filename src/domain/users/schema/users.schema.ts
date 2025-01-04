@@ -1,30 +1,33 @@
+import { relations } from 'drizzle-orm';
 import {
-  pgTable,
-  uuid,
-  text,
-  varchar,
-  jsonb,
-  timestamp,
+  boolean,
   index,
+  jsonb,
   pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  varchar,
 } from 'drizzle-orm/pg-core';
-import { UsersPermissions } from '../permissions/users-permissions';
-import { RegistrationSources } from '../auth/types/providersOAuth.enum';
 import { fileSchema } from 'src/domain/files/schema/files.schema';
 import { fileStatsSchema } from 'src/domain/stats/schema/stats.schema';
-import { relations } from 'drizzle-orm';
+import { RegistrationSources } from '../auth/types/providers-oauth.enum';
+import { UsersPermissions } from '../permissions/users-permissions';
 
 const allowedPermissions = Object.values(UsersPermissions);
-const allowedRegistrationSources = Object.values(RegistrationSources);
+
+const allowedRegistrationSources: RegistrationSources[] =
+  Object.values(RegistrationSources);
 
 const usersPermissionsEnum = pgEnum(
   'users_permissions',
   allowedPermissions as [string, ...string[]],
 );
-const registrationSourcesEnum = pgEnum(
-  'registration_sources',
-  allowedRegistrationSources as [string, ...string[]],
-);
+const registrationSourcesEnum = pgEnum('users_registration_sources', [
+  allowedRegistrationSources[0],
+  ...allowedRegistrationSources.slice(1),
+]);
 
 export const usersSchema = pgTable(
   'users',
@@ -32,23 +35,27 @@ export const usersSchema = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     name: text('name'),
     email: varchar('email', { length: 255 }).notNull().unique(),
-    password: text('password').notNull(),
+    password: text('password'),
     icon: text('icon'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at'),
-    hashedRefreshToken: text('hashed_refresh_token'),
-    payload: jsonb('payload').array().default([]),
+    payloads: jsonb('payload').array().default([]),
+    googleServiceAccounts: jsonb('google_service_accounts').array().default([]),
     permissions: usersPermissionsEnum('permissions')
       .array()
       .default(['CreateFile', 'DeleteFile']),
-    registrationSources: registrationSourcesEnum('registration_sources')
-      .array()
-      .default([]),
+    registrationSources: registrationSourcesEnum(
+      'registration_sources',
+    ).array(),
+    isVerified: boolean('is_verified').default(false).notNull(),
+    isTwoFactorEnabled: boolean('is_two_factor_enabled')
+      .default(false)
+      .notNull(),
   },
   (table) => {
     return {
-      idIndex: index('id_idx').on(table.id),
-      emailIndex: index('email_idx').on(table.email),
+      usersIdIndex: index('users_id_idx').on(table.id),
+      usersEmailIndex: index('users_email_idx').on(table.email),
     };
   },
 );

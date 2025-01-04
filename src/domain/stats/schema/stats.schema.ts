@@ -1,5 +1,5 @@
 import { relations } from 'drizzle-orm';
-import { pgTable, uuid, integer, index } from 'drizzle-orm/pg-core';
+import { index, integer, pgTable, uuid } from 'drizzle-orm/pg-core';
 import { usersSchema } from 'src/domain/users/schema/users.schema';
 
 export const fileStatsSchema = pgTable(
@@ -14,7 +14,7 @@ export const fileStatsSchema = pgTable(
   },
   (table) => {
     return {
-      idIndex: index('id_idx').on(table.id),
+      fileStatsIdIndex: index('file_stats_id_idx').on(table.id),
     };
   },
 );

@@ -1,4 +1,4 @@
-import { Transform, plainToClass } from 'class-transformer';
+import { plainToClass, Transform } from 'class-transformer';
 import {
   IsEnum,
   IsNotEmpty,
@@ -34,7 +34,7 @@ class EnvironmentVariables {
   @IsNotEmpty()
   PREFIX_URL: string;
 
-   @IsString()
+  @IsString()
   @IsNotEmpty()
   DATABASE_TYPE: string;
 
@@ -57,7 +57,7 @@ class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   DB_CONNECTION_STRING: string;
- 
+
   @IsString()
   @IsNotEmpty()
   JWT_ACCESS_TOKEN_SECRET: string;
@@ -108,8 +108,6 @@ class EnvironmentVariables {
   @IsNotEmpty()
   @Transform(({ value }) => parseInt(value))
   CACHE_TTL: number;
-
-  
 }
 
 export function validate(config: Record<string, unknown>) {

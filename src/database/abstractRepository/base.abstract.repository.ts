@@ -3,12 +3,12 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { TableConfig, PgTable } from 'drizzle-orm/pg-core';
-import { BaseInterfaceRepository } from './base.interface.repository';
-import { and, Column, eq, InferInsertModel } from 'drizzle-orm';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
+import { and, Column, eq, InferInsertModel } from 'drizzle-orm';
+import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { PgTable, TableConfig } from 'drizzle-orm/pg-core';
+import { BaseInterfaceRepository } from './base.interface.repository';
 
 type TableWithId<Schema extends PgTable<TableConfig>> = Schema & {
   id: Column<any, object, object>;
@@ -30,11 +30,11 @@ export abstract class BaseAbstractRepository<
    * @param data - Data to create the entity.
    * @returns The created entity.
    */
-  public async create(data: InferInsertModel<Schema>): Promise<T> {
+  public async create(data: Partial<T>): Promise<T> {
     try {
       const result = await this.database
         .insert(this.table)
-        .values(data)
+        .values(data as InferInsertModel<Schema>)
         .returning();
 
       if (!Array.isArray(result) || result.length === 0) {
@@ -55,11 +55,11 @@ export abstract class BaseAbstractRepository<
    * @param data - Data to create multiple entities.
    * @returns An array of created entities.
    */
-  public async createMany(data: InferInsertModel<Schema>[]): Promise<T[]> {
+  public async createMany(data: Partial<T>[]): Promise<T[]> {
     try {
       const result = await this.database
         .insert(this.table)
-        .values(data)
+        .values(data as InferInsertModel<Schema>[])
         .returning();
 
       if (!Array.isArray(result) || result.length === 0) {
@@ -123,12 +123,13 @@ export abstract class BaseAbstractRepository<
       }
       return result[0] as T;
     } catch (error) {
-      if (error instanceof NotFoundException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
         throw error;
       }
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
+
       throw new InternalServerErrorException(error.message);
     }
   }
@@ -173,7 +174,10 @@ export abstract class BaseAbstractRepository<
       }
       return result as T[];
     } catch (error) {
-      if (error instanceof NotFoundException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
         throw error;
       }
       throw new InternalServerErrorException(error.message);
@@ -201,6 +205,7 @@ export abstract class BaseAbstractRepository<
       if (!result || result.length === 0) {
         throw new NotFoundException(`${this.entityName}s not found`);
       }
+
       return result as T[];
     } catch (error) {
       if (error instanceof NotFoundException) {
@@ -231,6 +236,42 @@ export abstract class BaseAbstractRepository<
       return result[0] as T;
     } catch (error) {
       if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(error.message);
+    }
+  }
+
+  public async updateByCondition(
+    condition: Partial<T>,
+    data: Partial<T>,
+  ): Promise<T[]> {
+    try {
+      const conditions = Object.entries(condition).map(([key, value]) => {
+        const column = this.table[key as keyof Schema];
+        if (column instanceof Column) {
+          return eq(column, value);
+        } else {
+          throw new BadRequestException(`Invalid key ${key} in condition`);
+        }
+      });
+
+      const result = await this.database
+        .update(this.table)
+        .set(data)
+        .where(and(...conditions))
+        .returning();
+
+      if (!Array.isArray(result) || result.length === 0) {
+        throw new NotFoundException(`${this.entityName} not found`);
+      }
+
+      return result as T[];
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
         throw error;
       }
       throw new InternalServerErrorException(error.message);

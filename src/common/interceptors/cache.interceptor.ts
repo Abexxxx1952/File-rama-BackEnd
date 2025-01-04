@@ -1,17 +1,16 @@
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
+  CallHandler,
+  ExecutionContext,
+  Inject,
   Injectable,
   NestInterceptor,
-  ExecutionContext,
-  CallHandler,
-  Inject,
-  UseInterceptors,
   SetMetadata,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { Cache } from 'cache-manager';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
-import { Cache } from 'cache-manager';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Reflector } from '@nestjs/core';
 
 const CACHE_OPTION_KEY = 'cache_option';
 

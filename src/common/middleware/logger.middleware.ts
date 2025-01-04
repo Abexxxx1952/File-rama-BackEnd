@@ -1,10 +1,12 @@
-import { Injectable, NestMiddleware, Logger } from '@nestjs/common';
+import { Injectable, Logger, NestMiddleware } from '@nestjs/common';
 
 @Injectable()
 export class LoggerMiddleware implements NestMiddleware {
   private logger = new Logger('HTTP/HTTPS Logger');
 
   use(req: any, rep: any, next: () => void) {
+    rep.locals = {};
+
     const { method, originalUrl, params, query } = req;
     const start = Date.now();
 
@@ -19,6 +21,7 @@ export class LoggerMiddleware implements NestMiddleware {
         Query: ${JSON.stringify(query)}
         Body: ${JSON.stringify(rep.locals.requestData)}
       `;
+
       const responseLogsBody = `Response <--- 
         Status Code: ${statusCode}
         Status Message: ${statusMessage}

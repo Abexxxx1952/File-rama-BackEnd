@@ -1,3 +1,4 @@
+import { CacheModule } from '@nestjs/cache-manager';
 import {
   ClassSerializerInterceptor,
   MiddlewareConsumer,
@@ -5,13 +6,13 @@ import {
   RequestMethod,
 } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { validate } from './configs/env.validate';
 import { APP_GUARD, APP_INTERCEPTOR, Reflector } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { CacheModule } from '@nestjs/cache-manager';
-import { DomainModule } from './domain/domain.module';
-import { DatabaseModule } from './database/database.module';
+import { LoggerHelperInterceptor } from './common/interceptors/loggerHelper.interceptor';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
+import { validate } from './configs/env.validate';
+import { DatabaseModule } from './database/database.module';
+import { DomainModule } from './domain/domain.module';
 
 @Module({
   imports: [
@@ -57,9 +58,7 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
   providers: [
     {
       provide: APP_INTERCEPTOR,
-      useFactory: (reflector: Reflector) =>
-        new ClassSerializerInterceptor(reflector),
-      inject: [Reflector],
+      useClass: LoggerHelperInterceptor,
     },
     {
       provide: APP_GUARD,

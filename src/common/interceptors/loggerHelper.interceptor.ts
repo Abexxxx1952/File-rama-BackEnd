@@ -1,22 +1,23 @@
 import {
+  CallHandler,
+  ExecutionContext,
   Injectable,
   NestInterceptor,
-  ExecutionContext,
-  CallHandler,
 } from '@nestjs/common';
-import { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
 import { Reflector } from '@nestjs/core';
 import { plainToInstance } from 'class-transformer';
+import { Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
 import { REQUEST_BODY_LOGGING_KEY } from '../decorators/setMetadataRequestBodyLogging.decorator';
 
 @Injectable()
 export class LoggerHelperInterceptor implements NestInterceptor {
   constructor(private readonly reflector: Reflector) {}
+
   private parseRequestBody(context: ExecutionContext) {
     const httpContext = context.switchToHttp();
 
-    const request = httpContext.getRequest<Request>();
+    const request = httpContext.getRequest();
 
     const body = request.body;
 
@@ -43,11 +44,20 @@ export class LoggerHelperInterceptor implements NestInterceptor {
   }
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    const requestBody = this.parseRequestBody(context);
+
     return next.handle().pipe(
-      tap((data) => {
-        const res = context.switchToHttp().getResponse();
-        res.locals.requestData = this.parseRequestBody(context);
-        res.locals.responseData = data;
+      tap({
+        next: (data) => {
+          const rep = context.switchToHttp().getResponse();
+          rep.raw.locals.requestData = requestBody;
+          rep.raw.locals.responseData = data;
+        },
+        error: (err) => {
+          const rep = context.switchToHttp().getResponse();
+          rep.raw.locals.requestData = requestBody;
+          rep.raw.locals.responseData = err.response || err;
+        },
       }),
     );
   }

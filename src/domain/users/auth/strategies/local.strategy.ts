@@ -1,11 +1,11 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import { validateOrReject } from 'class-validator';
 import { plainToClass } from 'class-transformer';
+import { validateOrReject } from 'class-validator';
 import { Strategy } from 'passport-local';
 import { AuthService } from '../auth.service';
+import { LoginLocalUserDto } from '../dto/loginUserLocal.dto';
 import { AttachedUser } from '../types/attachedUser';
-import { LoginLocalUserDto } from '../../dto/loginUserLocal.dto';
 
 @Injectable()
 export class LocalStrategy extends PassportStrategy(Strategy) {
@@ -16,7 +16,8 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
   async validate(
     email: LoginLocalUserDto['email'],
     password: LoginLocalUserDto['password'],
-  ): Promise<AttachedUser> {
+    twoFactorVerificationCode?: LoginLocalUserDto['twoFactorVerificationCode'],
+  ): Promise<AttachedUser | { message: string }> {
     const loginDto = plainToClass(LoginLocalUserDto, { email, password });
     try {
       await validateOrReject(loginDto);
@@ -26,6 +27,10 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
       );
     }
 
-    return await this.authService.validateUserLocal(email, password);
+    return await this.authService.validateUserLocal(
+      email,
+      password,
+      twoFactorVerificationCode,
+    );
   }
 }

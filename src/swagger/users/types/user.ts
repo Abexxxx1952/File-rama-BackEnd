@@ -1,8 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { User } from '../../../domain/users/types/users';
-import { Payload } from '../../../domain/users/types/payload';
+import { GoogleServiceAccounts } from '@/domain/users/types/google-service-accounts';
+import { RegistrationSources } from '../../../domain/users/auth/types/providers-oauth.enum';
 import { UsersPermissionsKeys } from '../../../domain/users/permissions/users-permissions';
-import { RegistrationSources } from '../../../domain/users/auth/types/providersOAuth.enum';
+import { Payloads } from '../../../domain/users/types/payloads';
+import { User } from '../../../domain/users/types/users';
+import { GoogleServiceAccountsModel } from './google-service-accounts';
+import { PayloadModel } from './payload';
 
 export class UserModel implements User {
   @ApiProperty({ type: 'string', format: 'UUID' })
@@ -25,22 +28,21 @@ export class UserModel implements User {
   @ApiProperty()
   updatedAt: Date;
 
-  hashedRefreshToken?: string;
-
   @ApiProperty({ type: () => PayloadModel, isArray: true })
-  payload: Payload[];
+  payloads: Payloads[];
+
+  @ApiProperty({ type: () => GoogleServiceAccountsModel, isArray: true })
+  googleServiceAccounts: GoogleServiceAccounts[];
 
   @ApiProperty()
   permissions: UsersPermissionsKeys[];
 
   @ApiProperty()
   registrationSources: RegistrationSources[];
-}
-
-export class PayloadModel implements Payload {
-  @ApiProperty()
-  key: string;
 
   @ApiProperty()
-  value: string;
+  isVerified: boolean;
+
+  @ApiProperty()
+  isTwoFactorEnabled: boolean;
 }

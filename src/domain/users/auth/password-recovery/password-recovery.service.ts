@@ -1,0 +1,116 @@
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { v4 as uuidv4 } from 'uuid';
+import { MailService } from '@/mail/mail.service';
+import { UsersRepository } from '../../repository/users.repository';
+import { TokensRepository } from '../repository/tokens.repository';
+import { Tokens, TokenTypeEnum } from '../types/tokens';
+import { NewPasswordDto } from './dto/new-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+
+@Injectable()
+export class PasswordRecoveryService {
+  public constructor(
+    @Inject('TokensRepository')
+    private readonly tokensRepository: TokensRepository,
+    @Inject('UsersRepository')
+    private readonly usersRepository: UsersRepository,
+    private readonly mailService: MailService,
+  ) {}
+
+  public async requestPasswordRecovery(
+    resetPasswordDto: ResetPasswordDto,
+  ): Promise<{ message: string }> {
+    try {
+      const existingUser = await this.usersRepository.findOneByCondition({
+        email: resetPasswordDto.email,
+      });
+
+      const passwordResetToken = await this.generatePasswordResetToken(
+        existingUser.email,
+      );
+
+      await this.mailService.sendPasswordResetEmail(
+        passwordResetToken.email,
+        passwordResetToken.tokenValue,
+      );
+
+      return {
+        message: 'One-time password sent successfully',
+      };
+    } catch (error) {
+      error;
+    }
+  }
+
+  public async resetPassword(
+    newPasswordDto: NewPasswordDto,
+    token: string,
+  ): Promise<{ message: string }> {
+    try {
+      const existingToken = await this.tokensRepository.findOneByCondition({
+        tokenValue: token,
+        tokenType: TokenTypeEnum.PASSWORD_RESET,
+      });
+
+      const hasExpired = new Date(existingToken.expiresIn) < new Date();
+
+      if (hasExpired) {
+        throw new BadRequestException();
+      }
+
+      const hashedPassword = await this.usersRepository.hashPassword(
+        newPasswordDto.password,
+      );
+
+      await this.usersRepository.updateByCondition(
+        { email: existingToken.email },
+        {
+          password: hashedPassword,
+        },
+      );
+
+      await this.tokensRepository.deleteByCondition({
+        tokenValue: token,
+        tokenType: TokenTypeEnum.PASSWORD_RESET,
+      });
+
+      return {
+        message: 'Password updated',
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  private async generatePasswordResetToken(email: string): Promise<Tokens> {
+    const token = uuidv4();
+    const expiresIn = new Date(new Date().getTime() + 900 * 1000); // 15 minutes
+    try {
+      await this.tokensRepository.deleteByCondition({
+        email,
+        tokenType: TokenTypeEnum.PASSWORD_RESET,
+      });
+    } catch (error) {
+      if (!(error instanceof NotFoundException)) {
+        throw error;
+      }
+    }
+    try {
+      const passwordResetToken = await this.tokensRepository.create({
+        email,
+        tokenValue: token,
+        expiresIn,
+        tokenType: TokenTypeEnum.PASSWORD_RESET,
+      });
+
+      return passwordResetToken;
+    } catch (error) {
+      throw error;
+    }
+  }
+}

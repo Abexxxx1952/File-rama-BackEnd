@@ -1,7 +1,10 @@
+/* // eslint.config.mjs */
+/* import antfu from '@antfu/eslint-config' */
+/* export default antfu() */
 import { FlatCompat } from '@eslint/eslintrc';
-import path from 'path';
-import tsParser from '@typescript-eslint/parser';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
+import tsParser from '@typescript-eslint/parser';
+import path from 'path';
 
 const compat = new FlatCompat({
   baseDirectory: __dirname,

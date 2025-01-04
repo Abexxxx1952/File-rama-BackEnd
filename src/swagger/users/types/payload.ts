@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Payload } from '../../../domain/users/types/payload';
+import { Payloads } from '../../../domain/users/types/payloads';
 
-export class PayloadModel implements Payload {
+export class PayloadModel implements Payloads {
   @ApiProperty()
   key: string;
   @ApiProperty()

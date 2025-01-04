@@ -1,20 +1,25 @@
 import {
-  ApiOperation,
+  ApiBearerAuth,
   ApiBody,
-  ApiResponse,
+  ApiCookieAuth,
+  ApiOperation,
   ApiParam,
   ApiQuery,
-  ApiCookieAuth,
-  ApiBearerAuth,
+  ApiResponse,
 } from '@nestjs/swagger';
 import { PaginationParamsArgs } from '../types/paginationParams';
+import { AttachedUserModel } from './types/attached-user';
+import { CreateUserLocalArgs } from './types/create-user-local';
+import { FindUserByConditionsArgs } from './types/find-user-by-conditions';
+import { FindUsersByConditionWithPaginationParams } from './types/find-users-by-string-condition';
+import { LoginLocalUser } from './types/login-local-user';
+import { NewPasswordArgs } from './types/new-password';
+import { ResetPasswordArgs } from './types/reset-password';
+import { SendTokenArgs } from './types/send-token';
+import { StringResponseArgs } from './types/string-response';
+import { TokenVerificationArgs } from './types/tokenV-verification';
+import { UpdateUserArgs } from './types/update-user';
 import { UserModel } from './types/user';
-import { CreateUserLocalArgs } from './types/createUserLocal';
-import { LoginLocalUser } from './types/loginLocalUser';
-import { UpdateUserArgs } from './types/updateUser';
-import { AttachedUserModel } from './types/attachedUser';
-import { FindUsersByConditionWithPaginationParams } from './types/findUsersByStringCondition';
-import { FindUserByConditionsArgs } from './types/findUserByConditions';
 
 export function ApiUsersGet() {
   return function (
@@ -663,6 +668,150 @@ export function ApiUsersDeleteDeleteUserFromHeaders() {
     ApiResponse({
       status: 403,
       description: 'Forbidden',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 429,
+      description: 'ThrottlerException: Too Many Requests',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 500,
+      description: 'Internal Server Error',
+    })(target, propertyKey, descriptor);
+  };
+}
+
+export function ApiUsersPostEmailConfirmationTokenVerification() {
+  return function (
+    target: any,
+    propertyKey: string,
+    descriptor: PropertyDescriptor,
+  ) {
+    ApiOperation({ summary: 'Confirm email' })(target, propertyKey, descriptor);
+    ApiBody({ type: TokenVerificationArgs })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 201,
+      description: 'Mail confirmed',
+      type: StringResponseArgs,
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 400,
+      description: 'Bad Request',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 409,
+      description: 'Conflict. Email has already been taken',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 429,
+      description: 'ThrottlerException: Too Many Requests',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 500,
+      description: 'Internal Server Error',
+    })(target, propertyKey, descriptor);
+  };
+}
+
+export function ApiUsersPostEmailConfirmationSendVerificationToken() {
+  return function (
+    target: any,
+    propertyKey: string,
+    descriptor: PropertyDescriptor,
+  ) {
+    ApiOperation({ summary: 'Send verification token' })(
+      target,
+      propertyKey,
+      descriptor,
+    );
+    ApiBody({ type: SendTokenArgs })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 201,
+      description: 'Verification token sended',
+      type: StringResponseArgs,
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 400,
+      description: 'Bad Request',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 409,
+      description: 'Conflict. Email has already been taken',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 429,
+      description: 'ThrottlerException: Too Many Requests',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 500,
+      description: 'Internal Server Error',
+    })(target, propertyKey, descriptor);
+  };
+}
+
+export function ApiUsersPostPasswordRecoveryRequestPasswordRecovery() {
+  return function (
+    target: any,
+    propertyKey: string,
+    descriptor: PropertyDescriptor,
+  ) {
+    ApiOperation({ summary: 'Send recovery token' })(
+      target,
+      propertyKey,
+      descriptor,
+    );
+    ApiBody({ type: ResetPasswordArgs })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 201,
+      description: 'Recovery token sended',
+      type: StringResponseArgs,
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 400,
+      description: 'Bad Request',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 409,
+      description: 'Conflict. Email has already been taken',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 429,
+      description: 'ThrottlerException: Too Many Requests',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 500,
+      description: 'Internal Server Error',
+    })(target, propertyKey, descriptor);
+  };
+}
+
+export function ApiUsersPostPasswordRecoveryResetPassword() {
+  return function (
+    target: any,
+    propertyKey: string,
+    descriptor: PropertyDescriptor,
+  ) {
+    ApiOperation({ summary: 'Reset password' })(
+      target,
+      propertyKey,
+      descriptor,
+    );
+    ApiParam({
+      name: 'token',
+      type: 'string',
+    })(target, propertyKey, descriptor);
+    ApiBody({ type: NewPasswordArgs })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 201,
+      description: 'Password reset',
+      type: StringResponseArgs,
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 400,
+      description: 'Bad Request',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 409,
+      description: 'Conflict. Email has already been taken',
     })(target, propertyKey, descriptor);
     ApiResponse({
       status: 429,

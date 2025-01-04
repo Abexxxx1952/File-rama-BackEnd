@@ -1,12 +1,12 @@
 import { relations } from 'drizzle-orm';
 import {
-  pgTable,
-  uuid,
-  text,
-  integer,
-  timestamp,
   boolean,
   index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
 } from 'drizzle-orm/pg-core';
 import { usersSchema } from 'src/domain/users/schema/users.schema';
 
@@ -24,7 +24,7 @@ export const fileSchema = pgTable(
   },
   (table) => {
     return {
-      idIndex: index('id_idx').on(table.id),
+      fileIdIndex: index('file_id_idx').on(table.id),
     };
   },
 );

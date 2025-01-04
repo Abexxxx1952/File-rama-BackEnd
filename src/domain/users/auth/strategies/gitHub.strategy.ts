@@ -4,7 +4,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Strategy } from 'passport-github2';
 import { VerifyCallback } from 'passport-oauth2';
 import { AuthService } from '../auth.service';
-import { RegistrationSources } from '../types/providersOAuth.enum';
+import { RegistrationSources } from '../types/providers-oauth.enum';
 
 @Injectable()
 export class GitHubStrategy extends PassportStrategy(Strategy, 'gitHub') {

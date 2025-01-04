@@ -6,16 +6,16 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { DATABASE_CONNECTION } from '../../../database/database.module';
-import { BaseAbstractRepository } from '../../../database/abstractRepository/base.abstract.repository';
-import { usersSchema } from '../schema/users.schema';
 import * as bcrypt from 'bcrypt';
-import { RegistrationSources } from '../auth/types/providersOAuth.enum';
-import { CreateUserDto } from '../dto/create.dto';
-import { UpdateUserDto } from '../dto/update.dto';
+import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { BaseAbstractRepository } from '../../../database/abstractRepository/base.abstract.repository';
+import { DATABASE_CONNECTION } from '../../../database/database.module';
+import { CreateUserLocalDto } from '../auth/dto/createLocal.dto';
+import { EmailConfirmationService } from '../auth/email-confirmation/email-confirmation.service';
+import { ParseUserOAuth } from '../auth/types/parse-user-oauth';
+import { RegistrationSources } from '../auth/types/providers-oauth.enum';
+import { usersSchema } from '../schema/users.schema';
 import { User } from '../types/users';
-import { ParseUserOAuth } from '../auth/types/parseUserOAuth';
 
 @Injectable()
 export class UsersRepository extends BaseAbstractRepository<
@@ -28,11 +28,12 @@ export class UsersRepository extends BaseAbstractRepository<
     public readonly database: NodePgDatabase<
       Record<'users', typeof usersSchema>
     >,
+    private readonly emailConfirmationService: EmailConfirmationService,
   ) {
     super(database, usersSchema, 'User');
   }
   public async createUserLocal(
-    createUserLocalDto: CreateUserDto,
+    createUserLocalDto: CreateUserLocalDto,
   ): Promise<User> {
     const errorResponse = {
       errors: {},
@@ -60,15 +61,19 @@ export class UsersRepository extends BaseAbstractRepository<
       const hashedPassword: string = await this.hashPassword(
         createUserLocalDto.password,
       );
+      const { passwordRepeat, ...userWithoutPasswordRepeat } =
+        createUserLocalDto;
 
       const entity = {
-        ...createUserLocalDto,
+        ...userWithoutPasswordRepeat,
         password: hashedPassword,
-        registrationSources: [RegistrationSources.Local],
-        files: [],
+        /*  registrationSources: [RegistrationSources.Local], */
       };
+      console.log(entity);
 
       const user = await this.create(entity);
+
+      await this.emailConfirmationService.sendVerificationToken(entity.email);
 
       return user;
     } catch (error) {
@@ -82,7 +87,6 @@ export class UsersRepository extends BaseAbstractRepository<
       const entity = {
         ...createUserOAuthDto,
         registrationSources: [RegistrationSources.Local],
-        password: '',
       };
 
       const user = await this.create(entity);
@@ -104,7 +108,7 @@ export class UsersRepository extends BaseAbstractRepository<
     }
   }
 
-  public async updateUserById(id: string, data: UpdateUserDto): Promise<User> {
+  public async updateUserById(id: string, data: Partial<User>): Promise<User> {
     let dataUpdate: User;
     if (data.password) {
       let existUser: User;
@@ -133,20 +137,7 @@ export class UsersRepository extends BaseAbstractRepository<
     }
   }
 
-  public async removeUserById(id: string): Promise<User> {
-    try {
-      const user = await this.deleteById(id);
-
-      return user;
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw new ForbiddenException('Access Denied');
-      }
-      throw error;
-    }
-  }
-
-  private async hashPassword(password: string): Promise<string> {
+  public async hashPassword(password: string): Promise<string> {
     const saltOrRounds = 10;
     return await bcrypt.hash(password, saltOrRounds);
   }

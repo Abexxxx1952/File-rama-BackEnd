@@ -1,20 +1,20 @@
 import { Exclude } from 'class-transformer';
-import { usersSchema } from '../schema/users.schema';
-import { UsersPermissionsKeys } from '../permissions/users-permissions';
-import { RegistrationSources } from '../auth/types/providersOAuth.enum';
-import { Payload } from './payload';
 import { InferSelectModel } from 'drizzle-orm';
+import { RegistrationSources } from '../auth/types/providers-oauth.enum';
+import { UsersPermissionsKeys } from '../permissions/users-permissions';
+import { usersSchema } from '../schema/users.schema';
+import { GoogleServiceAccounts } from './google-service-accounts';
+import { Payloads } from './payloads';
 
 type UserInferSelect = InferSelectModel<typeof usersSchema>;
 
 type UserWithOptionalFields = Omit<
   UserInferSelect,
-  'name' | 'icon' | 'updatedAt' | 'hashedRefreshToken'
+  'name' | 'icon' | 'updatedAt'
 > & {
   name?: string;
   icon?: string;
   updatedAt?: Date;
-  hashedRefreshToken?: string;
 };
 
 export class User implements UserWithOptionalFields {
@@ -33,12 +33,16 @@ export class User implements UserWithOptionalFields {
 
   updatedAt?: Date;
 
-  @Exclude()
-  hashedRefreshToken?: string;
+  payloads: Payloads[];
 
-  payload: Payload[];
+  @Exclude()
+  googleServiceAccounts: GoogleServiceAccounts[];
 
   permissions: UsersPermissionsKeys[];
 
   registrationSources: RegistrationSources[];
+
+  isVerified: boolean;
+
+  isTwoFactorEnabled: boolean;
 }

@@ -1,37 +1,37 @@
 import {
   ForbiddenException,
+  Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { ModuleRef } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { FastifyReply } from 'fastify';
 import * as bcrypt from 'bcrypt';
-import { Tokens } from './types/tokens';
-import { JwtPayload } from './types/jwtPayload';
+import { FastifyReply } from 'fastify';
 import { UsersRepository } from '../repository/users.repository';
 import { User } from '../types/users';
+import { TokensRepository } from './repository/tokens.repository';
+import { TwoFactorAuthService } from './two-factor-auth/two-factor-auth.service';
+import { AtRtTokens } from './types/atRt-tokens';
+import { AttachedUserWithRt } from './types/attached-user-withRt';
 import { AttachedUser } from './types/attachedUser';
-import { AttachedUserWithRt } from './types/attachedUserWithRt';
-import { RegistrationSources } from './types/providersOAuth.enum';
-import { ParseUserOAuth } from './types/parseUserOAuth';
+import { JwtPayload } from './types/jwtPayload';
+import { ParseUserOAuth } from './types/parse-user-oauth';
+import { RegistrationSources } from './types/providers-oauth.enum';
+import { Tokens, TokenTypeEnum } from './types/tokens';
 
 @Injectable()
 export class AuthService {
-  private usersRepository: UsersRepository;
   constructor(
     private readonly configService: ConfigService,
+    @Inject('UsersRepository')
+    private readonly usersRepository: UsersRepository,
+    @Inject('TokensRepository')
+    private readonly tokensRepository: TokensRepository,
     private readonly jwtService: JwtService,
-    private readonly moduleRef: ModuleRef,
+    private readonly twoFactorAuthService: TwoFactorAuthService,
   ) {}
-
-  async onModuleInit() {
-    this.usersRepository = this.moduleRef.get('UsersRepository', {
-      strict: false,
-    });
-  }
 
   async login(
     currentUser: AttachedUser,
@@ -41,7 +41,7 @@ export class AuthService {
       const tokens = await this.getTokens(currentUser);
       const [user] = await Promise.all([
         this.usersRepository.findById(currentUser.id),
-        this.updateRtHash(currentUser.id, tokens.refresh_token),
+        this.updateRtToken(currentUser.email, tokens.refresh_token),
       ]);
 
       response.cookie('Authentication_accessToken', tokens.access_token, {
@@ -70,7 +70,7 @@ export class AuthService {
   ): Promise<void> {
     try {
       const tokens = await this.getTokens(currentUser);
-      await this.updateRtHash(currentUser.id, tokens.refresh_token);
+      await this.updateRtToken(currentUser.email, tokens.refresh_token);
       response.redirect(
         this.configService.getOrThrow<string>(
           'CLIENT_AUTH_PROVIDER_REDIRECT_URL',
@@ -90,9 +90,7 @@ export class AuthService {
     response: FastifyReply,
   ): Promise<AttachedUser> {
     try {
-      await this.usersRepository.updateById(currentUser.id, {
-        hashedRefreshToken: '',
-      });
+      await this.deleteRtToken(currentUser.email);
 
       response.cookie('Authentication_accessToken', '', {
         httpOnly: true,
@@ -116,10 +114,10 @@ export class AuthService {
   async refreshTokens(
     currentUser: AttachedUserWithRt,
     response: FastifyReply,
-  ): Promise<Tokens> {
-    let userExist: User;
+  ): Promise<AtRtTokens> {
+    let refreshToken: Tokens;
     try {
-      userExist = await this.usersRepository.findById(currentUser.id);
+      await this.usersRepository.findById(currentUser.id);
     } catch (error) {
       if (error instanceof NotFoundException) {
         throw new ForbiddenException('Access Denied');
@@ -127,19 +125,28 @@ export class AuthService {
       throw error;
     }
 
-    if (!userExist.hashedRefreshToken)
-      throw new ForbiddenException('Access Denied');
+    try {
+      refreshToken = await this.tokensRepository.findOneByCondition({
+        email: currentUser.email,
+        tokenType: TokenTypeEnum.REFRESH,
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw new ForbiddenException('Access Denied');
+      }
+      throw error;
+    }
 
     const rtMatches = await bcrypt.compare(
       currentUser.refreshToken,
-      userExist.hashedRefreshToken,
+      refreshToken.tokenValue,
     );
 
     if (!rtMatches) throw new ForbiddenException('Access Denied');
 
     try {
       const tokens = await this.getTokens(currentUser);
-      await this.updateRtHash(userExist.id, tokens.refresh_token);
+      await this.updateRtToken(currentUser.email, tokens.refresh_token);
 
       response.cookie('Authentication_accessToken', tokens.access_token, {
         httpOnly: true,
@@ -166,7 +173,8 @@ export class AuthService {
   async validateUserLocal(
     email: string,
     password: string,
-  ): Promise<AttachedUser> {
+    twoFactorVerificationCode?: string,
+  ): Promise<AttachedUser | { message: string }> {
     try {
       const userExists = await this.usersRepository.findOneByCondition({
         email: email,
@@ -174,6 +182,7 @@ export class AuthService {
 
       if (
         !userExists.password ||
+        !userExists.isVerified ||
         !userExists.registrationSources.includes(RegistrationSources.Local)
       )
         throw new ForbiddenException('Access Denied');
@@ -184,6 +193,22 @@ export class AuthService {
       );
 
       if (!passwordMatches) throw new ForbiddenException('Access Denied');
+
+      if (userExists.isTwoFactorEnabled) {
+        if (!twoFactorVerificationCode) {
+          await this.twoFactorAuthService.sendTwoFactorToken(email);
+
+          return {
+            message:
+              'Check your mail. Coded two-factor authentication required.',
+          };
+        }
+
+        await this.twoFactorAuthService.validateTwoFactorToken(
+          email,
+          twoFactorVerificationCode,
+        );
+      }
 
       return {
         id: userExists.id,
@@ -243,19 +268,23 @@ export class AuthService {
     };
   }
 
-  private async updateRtHash(userId: string, rt: string): Promise<void> {
+  private async updateRtToken(email: string, rt: string): Promise<void> {
     try {
+      await this.deleteRtToken(email);
       const hash = await bcrypt.hash(rt, 10);
-      await this.usersRepository.updateById(userId, {
-        hashedRefreshToken: hash,
-      });
+      const token = {
+        email,
+        tokenValue: hash,
+        tokenType: TokenTypeEnum.REFRESH,
+      };
+      await this.tokensRepository.create(token);
     } catch (error) {
       throw error;
     }
   }
   private async getTokens(
     currentUser: AttachedUser | AttachedUserWithRt,
-  ): Promise<Tokens> {
+  ): Promise<AtRtTokens> {
     const jwtPayload: JwtPayload = {
       sub: currentUser.id,
       email: currentUser.email,
@@ -333,5 +362,18 @@ export class AuthService {
       icon,
       registrationSources: [RegistrationSources.GitHub],
     };
+  }
+
+  private async deleteRtToken(email: string): Promise<void> {
+    try {
+      await this.tokensRepository.deleteByCondition({
+        email,
+        tokenType: TokenTypeEnum.REFRESH,
+      });
+    } catch (error) {
+      if (!(error instanceof NotFoundException)) {
+        throw error;
+      }
+    }
   }
 }

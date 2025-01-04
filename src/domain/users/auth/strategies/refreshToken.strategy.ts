@@ -3,8 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { FastifyRequest } from 'fastify';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { AttachedUserWithRt } from '../types/attached-user-withRt';
 import { JwtPayload } from '../types/jwtPayload';
-import { AttachedUserWithRt } from '../types/attachedUserWithRt';
 
 @Injectable()
 export class RefreshTokenStrategy extends PassportStrategy(

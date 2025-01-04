@@ -1,13 +1,13 @@
+import fastifyCookie from '@fastify/cookie';
+import fastifyHelmet from '@fastify/helmet';
+import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import {
   FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
-import fastifyHelmet from '@fastify/helmet';
 import { createSwagger } from './swagger/swagger';
-import fastifyCookie from '@fastify/cookie';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
