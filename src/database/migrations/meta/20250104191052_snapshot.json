@@ -1,6 +1,6 @@
 {
-  "id": "be9e7770-b8c4-4ee3-9ea7-58aa26b24daa",
-  "prevId": "d0a98712-2f8d-41d5-b4a3-099199f1dae9",
+  "id": "9441acfd-46d8-457a-90fd-15a7b7b9b493",
+  "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -323,10 +323,9 @@
         },
         "registration_sources": {
           "name": "registration_sources",
-          "type": "registration_sources[]",
+          "type": "users_registration_sources[]",
           "primaryKey": false,
-          "notNull": false,
-          "default": "'{}'"
+          "notNull": true
         },
         "is_verified": {
           "name": "is_verified",
@@ -391,7 +390,35 @@
       "isRLSEnabled": false
     }
   },
-  "enums": {},
+  "enums": {
+    "public.tokens_type": {
+      "name": "tokens_type",
+      "schema": "public",
+      "values": [
+        "VERIFICATION",
+        "TWO_FACTOR",
+        "PASSWORD_RESET",
+        "REFRESH"
+      ]
+    },
+    "public.users_registration_sources": {
+      "name": "users_registration_sources",
+      "schema": "public",
+      "values": [
+        "Google",
+        "GitHub",
+        "Local"
+      ]
+    },
+    "public.users_permissions": {
+      "name": "users_permissions",
+      "schema": "public",
+      "values": [
+        "CreateFile",
+        "DeleteFile"
+      ]
+    }
+  },
   "schemas": {},
   "sequences": {},
   "roles": {},

@@ -1,5 +1,11 @@
 import { Transform } from 'class-transformer';
-import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
 
 export class LoginLocalUserDto {
   @IsEmail()
@@ -10,9 +16,10 @@ export class LoginLocalUserDto {
   @MinLength(1)
   readonly password: string;
 
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
-  twoFactorVerificationCode?: string;
+  readonly twoFactorVerificationCode?: string;
 }
 
 export class LoginLocalUserDtoWithoutPassword extends LoginLocalUserDto {

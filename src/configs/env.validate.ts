@@ -108,6 +108,26 @@ class EnvironmentVariables {
   @IsNotEmpty()
   @Transform(({ value }) => parseInt(value))
   CACHE_TTL: number;
+
+  @IsString()
+  @IsNotEmpty()
+  GOOGLE_RECAPTCHA_SECRET_KEY: string;
+
+  @IsString()
+  @IsNotEmpty()
+  MAIL_LOGIN: string;
+
+  @IsString()
+  @IsNotEmpty()
+  MAIL_PASSWORD: string;
+
+  @IsString()
+  @IsNotEmpty()
+  MAIL_HOST: string;
+
+  @IsString()
+  @IsNotEmpty()
+  MAIL_PORT: string;
 }
 
 export function validate(config: Record<string, unknown>) {

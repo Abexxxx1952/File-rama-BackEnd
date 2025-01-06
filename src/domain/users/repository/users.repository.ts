@@ -67,9 +67,8 @@ export class UsersRepository extends BaseAbstractRepository<
       const entity = {
         ...userWithoutPasswordRepeat,
         password: hashedPassword,
-        /*  registrationSources: [RegistrationSources.Local], */
+        registrationSources: [RegistrationSources.Local],
       };
-      console.log(entity);
 
       const user = await this.create(entity);
 
@@ -99,7 +98,8 @@ export class UsersRepository extends BaseAbstractRepository<
 
   public async status(email: string): Promise<User> {
     try {
-      return await this.findOneByCondition({ email });
+      const user = await this.findOneByCondition({ email });
+      return user;
     } catch (error) {
       if (error instanceof NotFoundException) {
         throw new ForbiddenException('Access Denied');
@@ -129,9 +129,10 @@ export class UsersRepository extends BaseAbstractRepository<
         ];
       }
     }
-    dataUpdate = { ...data, ...dataUpdate };
+    dataUpdate = { ...data, ...dataUpdate, updatedAt: new Date() };
     try {
-      return await this.updateById(id, dataUpdate);
+      const user = await this.updateById(id, dataUpdate);
+      return user;
     } catch (error) {
       throw error;
     }

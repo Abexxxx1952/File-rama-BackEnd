@@ -1,10 +1,17 @@
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'tokens_type') THEN
+        CREATE TYPE "public"."tokens_type" AS ENUM('VERIFICATION', 'TWO_FACTOR', 'PASSWORD_RESET', 'REFRESH');
+    END IF;
 
-CREATE TYPE "tokens_type" AS ENUM ('VERIFICATION', 'TWO_FACTOR', 'PASSWORD_RESET', 'REFRESH');
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'users_registration_sources') THEN
+        CREATE TYPE "public"."users_registration_sources" AS ENUM('Google', 'GitHub', 'Local');
+    END IF;
 
-CREATE TYPE "users_permissions" AS ENUM ('CreateFile', 'DeleteFile');
-
-CREATE TYPE "users_registration_sources" AS ENUM ('Local', 'Google', 'GitHub');
-
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'users_permissions') THEN
+        CREATE TYPE "public"."users_permissions" AS ENUM('CreateFile', 'DeleteFile');
+    END IF;
+END $$;
 
 CREATE TABLE "file" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -44,6 +51,7 @@ CREATE TABLE "users" (
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp,
 	"payload" jsonb[] DEFAULT '{}',
+	"google_service_accounts" jsonb[] DEFAULT '{}',
 	"permissions" "users_permissions"[] DEFAULT '{"CreateFile","DeleteFile"}',
 	"registration_sources" "users_registration_sources"[] NOT NULL,
 	"is_verified" boolean DEFAULT false NOT NULL,

@@ -55,6 +55,14 @@ export interface BaseInterfaceRepository<
   updateById(id: string | number, data: Partial<T>): Promise<T>;
 
   /**
+   * Update an entity by its ID.
+   * @param condition - The condition to update entities.
+   * @param data - The data to update.
+   * @returns The updated entity.
+   */
+  updateByCondition(condition: Partial<T>, data: Partial<T>): Promise<T[]>;
+
+  /**
    * Delete an entity by its ID.
    * @param id - The ID of the entity.
    * @returns The deleted entity.

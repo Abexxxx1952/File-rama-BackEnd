@@ -46,3 +46,38 @@ export class UserModel implements User {
   @ApiProperty()
   isTwoFactorEnabled: boolean;
 }
+
+export class UserPoorModel implements User {
+  @ApiProperty({ type: 'string', format: 'UUID' })
+  id: string;
+
+  @ApiPropertyOptional()
+  name?: string;
+
+  @ApiProperty()
+  email: string;
+
+  password: string;
+
+  @ApiPropertyOptional()
+  icon?: string;
+
+  @ApiProperty()
+  createdAt: Date;
+
+  @ApiProperty()
+  updatedAt: Date;
+
+  @ApiProperty({ type: () => PayloadModel, isArray: true })
+  payloads: Payloads[];
+
+  googleServiceAccounts: GoogleServiceAccounts[];
+
+  permissions: UsersPermissionsKeys[];
+
+  registrationSources: RegistrationSources[];
+
+  isVerified: boolean;
+
+  isTwoFactorEnabled: boolean;
+}

@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  IsArray,
   IsDate,
   IsEmail,
   IsNotEmpty,
@@ -7,6 +8,8 @@ import {
   IsString,
   IsUUID,
 } from 'class-validator';
+import { RegistrationSources } from '../auth/types/providers-oauth.enum';
+import { UsersPermissionsKeys } from '../permissions/users-permissions';
 
 export class FindUserByConditionsDto {
   @IsOptional()

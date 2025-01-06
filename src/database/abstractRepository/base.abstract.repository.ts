@@ -121,6 +121,7 @@ export abstract class BaseAbstractRepository<
       if (!result || result.length === 0) {
         throw new NotFoundException(`${this.entityName} not found`);
       }
+
       return result[0] as T;
     } catch (error) {
       if (
@@ -260,6 +261,7 @@ export abstract class BaseAbstractRepository<
         .update(this.table)
         .set(data)
         .where(and(...conditions))
+
         .returning();
 
       if (!Array.isArray(result) || result.length === 0) {

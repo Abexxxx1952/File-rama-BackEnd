@@ -20,11 +20,11 @@ const allowedPermissions = Object.values(UsersPermissions);
 const allowedRegistrationSources: RegistrationSources[] =
   Object.values(RegistrationSources);
 
-const usersPermissionsEnum = pgEnum(
+export const usersPermissionsEnum = pgEnum(
   'users_permissions',
   allowedPermissions as [string, ...string[]],
 );
-const registrationSourcesEnum = pgEnum('users_registration_sources', [
+export const registrationSourcesEnum = pgEnum('users_registration_sources', [
   allowedRegistrationSources[0],
   ...allowedRegistrationSources.slice(1),
 ]);
@@ -44,9 +44,9 @@ export const usersSchema = pgTable(
     permissions: usersPermissionsEnum('permissions')
       .array()
       .default(['CreateFile', 'DeleteFile']),
-    registrationSources: registrationSourcesEnum(
-      'registration_sources',
-    ).array(),
+    registrationSources: registrationSourcesEnum('registration_sources')
+      .array()
+      .notNull(),
     isVerified: boolean('is_verified').default(false).notNull(),
     isTwoFactorEnabled: boolean('is_two_factor_enabled')
       .default(false)

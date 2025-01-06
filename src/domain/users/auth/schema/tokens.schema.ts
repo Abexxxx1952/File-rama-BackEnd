@@ -10,7 +10,7 @@ import { TokenTypeEnum } from '../types/tokens';
 
 const TokenType: TokenTypeEnum[] = Object.values(TokenTypeEnum);
 
-const tokensTypeEnum = pgEnum('tokens_type', [
+export const tokensTypeEnum = pgEnum('tokens_type', [
   TokenType[0],
   ...TokenType.slice(1),
 ]);

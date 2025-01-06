@@ -92,6 +92,7 @@ export class EmailConfirmationService {
         throw error;
       }
     }
+
     try {
       const verificationToken = await this.tokensRepository.create({
         email,

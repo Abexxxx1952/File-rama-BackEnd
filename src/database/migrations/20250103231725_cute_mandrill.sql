@@ -1,1 +1,0 @@
-ALTER TABLE "users" ALTER COLUMN "registration_sources" DROP DEFAULT;

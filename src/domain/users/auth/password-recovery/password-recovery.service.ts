@@ -43,7 +43,7 @@ export class PasswordRecoveryService {
         message: 'One-time password sent successfully',
       };
     } catch (error) {
-      error;
+      throw error;
     }
   }
 
@@ -51,6 +51,8 @@ export class PasswordRecoveryService {
     newPasswordDto: NewPasswordDto,
     token: string,
   ): Promise<{ message: string }> {
+    console.log('token', token, newPasswordDto);
+
     try {
       const existingToken = await this.tokensRepository.findOneByCondition({
         tokenValue: token,

@@ -15,7 +15,9 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { plainToInstance } from 'class-transformer';
 import { UUID } from 'crypto';
+import { TransformResultInterceptor } from '@/common/interceptors/transform-result.interceptor';
 import { CurrentUser } from '../../common/decorators/currentUser.decorator';
 import { ParseRequestBodyWhenLogging } from '../../common/decorators/setMetadataRequestBodyLogging.decorator';
 import {
@@ -40,7 +42,7 @@ import { AccessTokenAuthGuardFromHeaders } from './auth/guards/access-token-from
 import { FindUserByConditionsDto } from './dto/find-by-conditions.dto';
 import { UpdateUserDto } from './dto/update.dto';
 import { UsersRepository } from './repository/users.repository';
-import { User } from './types/users';
+import { User, UserPoor } from './types/users';
 
 @ApiTags('v1/users')
 @Controller('v1/users')
@@ -53,6 +55,7 @@ export class UsersController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
+  @UseInterceptors(new TransformResultInterceptor(UserPoor))
   @UseInterceptors(CacheInterceptor)
   @ApiUsersGet()
   async findAll(@Query() { offset, limit }: PaginationParams): Promise<User[]> {
@@ -61,6 +64,7 @@ export class UsersController {
 
   @Get('findById/:id')
   @HttpCode(HttpStatus.OK)
+  @UseInterceptors(new TransformResultInterceptor(UserPoor))
   @UseInterceptors(CacheInterceptor)
   @ApiUsersGetFindById()
   async findOneById(@Param('id', ParseUUIDPipe) id: UUID): Promise<User> {
@@ -69,6 +73,7 @@ export class UsersController {
 
   @Get('findOneBy')
   @HttpCode(HttpStatus.OK)
+  @UseInterceptors(new TransformResultInterceptor(UserPoor))
   @UseInterceptors(CacheInterceptor)
   @ApiUsersGetFindOneBy()
   async findOneByCondition(
@@ -90,6 +95,7 @@ export class UsersController {
 
   @Get('findManyBy')
   @HttpCode(HttpStatus.OK)
+  @UseInterceptors(new TransformResultInterceptor(UserPoor))
   @UseInterceptors(CacheInterceptor)
   @ApiUsersGetFindManyBy()
   async findManyByCondition(
@@ -118,6 +124,7 @@ export class UsersController {
   @ParseRequestBodyWhenLogging(CreateUserDtoLocalWithoutPassword)
   @UseGuards(AccessTokenAuthGuardFromCookies)
   @HttpCode(HttpStatus.OK)
+  @UseInterceptors(new TransformResultInterceptor(User))
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
     cacheKey: ['/api/v1/users/'],
@@ -138,6 +145,7 @@ export class UsersController {
   @ParseRequestBodyWhenLogging(CreateUserDtoLocalWithoutPassword)
   @UseGuards(AccessTokenAuthGuardFromHeaders)
   @HttpCode(HttpStatus.OK)
+  @UseInterceptors(new TransformResultInterceptor(User))
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
     cacheKey: ['/api/v1/users/'],
@@ -157,6 +165,7 @@ export class UsersController {
   @Delete('delete')
   @UseGuards(AccessTokenAuthGuardFromCookies)
   @HttpCode(HttpStatus.OK)
+  @UseInterceptors(new TransformResultInterceptor(User))
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
     cacheKey: ['/api/v1/users/'],
@@ -170,6 +179,7 @@ export class UsersController {
   @Delete('deleteFromHeaders')
   @UseGuards(AccessTokenAuthGuardFromHeaders)
   @HttpCode(HttpStatus.OK)
+  @UseInterceptors(new TransformResultInterceptor(User))
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
     cacheKey: ['/api/v1/users/'],

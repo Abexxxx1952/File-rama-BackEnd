@@ -1,5 +1,6 @@
 import {
   Body,
+  ClassSerializerInterceptor,
   Controller,
   Get,
   HttpCode,
@@ -13,6 +14,7 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import { Recaptcha } from '@nestlab/google-recaptcha';
 import { FastifyReply } from 'fastify';
+import { TransformResultInterceptor } from '@/common/interceptors/transform-result.interceptor';
 import { CurrentUser } from '../../../common/decorators/currentUser.decorator';
 import { ParseRequestBodyWhenLogging } from '../../../common/decorators/setMetadataRequestBodyLogging.decorator';
 import {
@@ -64,6 +66,8 @@ export class AuthController {
 
   @Get('status')
   @UseGuards(AccessTokenAuthGuardFromCookies)
+  @UseInterceptors(new TransformResultInterceptor(User))
+  @UseInterceptors(ClassSerializerInterceptor)
   @HttpCode(HttpStatus.OK)
   @ApiUsersGetStatus()
   async status(@CurrentUser() currentUser: AttachedUser): Promise<User> {
@@ -72,6 +76,8 @@ export class AuthController {
 
   @Get('statusFromHeaders')
   @UseGuards(AccessTokenAuthGuardFromHeaders)
+  @UseInterceptors(new TransformResultInterceptor(User))
+  @UseInterceptors(ClassSerializerInterceptor)
   @HttpCode(HttpStatus.OK)
   @ApiUsersGetStatusFromHeaders()
   async statusFromHeaders(
@@ -83,6 +89,8 @@ export class AuthController {
   @Post('registration')
   @Recaptcha()
   @ParseRequestBodyWhenLogging(CreateUserDtoLocalWithoutPassword)
+  @UseInterceptors(new TransformResultInterceptor(User))
+  @UseInterceptors(ClassSerializerInterceptor)
   @HttpCode(HttpStatus.CREATED)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
@@ -98,6 +106,8 @@ export class AuthController {
   @Recaptcha()
   @UseGuards(LocalAuthGuard)
   @ParseRequestBodyWhenLogging(LoginLocalUserDtoWithoutPassword)
+  @UseInterceptors(new TransformResultInterceptor(User))
+  @UseInterceptors(ClassSerializerInterceptor)
   @HttpCode(HttpStatus.OK)
   @ApiUsersPostLoginLocal()
   async loginLocal(

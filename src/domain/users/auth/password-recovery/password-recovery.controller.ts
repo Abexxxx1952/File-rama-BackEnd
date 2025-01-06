@@ -23,14 +23,16 @@ export class PasswordRecoveryController {
 
   @Recaptcha()
   @Post('request-password-recovery')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.CREATED)
   @ApiUsersPostPasswordRecoveryRequestPasswordRecovery()
   public async requestPasswordRecovery(
     @Body() resetPasswordDto: ResetPasswordDto,
-  ) {
-    return this.passwordRecoveryService.requestPasswordRecovery(
-      resetPasswordDto,
-    );
+  ): Promise<{ message: string }> {
+    const result =
+      this.passwordRecoveryService.requestPasswordRecovery(resetPasswordDto);
+    console.log('result', result);
+
+    return result;
   }
 
   @Recaptcha()
@@ -40,7 +42,7 @@ export class PasswordRecoveryController {
   public async resetPassword(
     @Body() newPasswordDto: NewPasswordDto,
     @Param('token') token: string,
-  ) {
+  ): Promise<{ message: string }> {
     return this.passwordRecoveryService.resetPassword(newPasswordDto, token);
   }
 }

@@ -1,5 +1,6 @@
 import { Exclude } from 'class-transformer';
 import { InferSelectModel } from 'drizzle-orm';
+import { MakeOptional } from '@/database/types/make-optional';
 import { RegistrationSources } from '../auth/types/providers-oauth.enum';
 import { UsersPermissionsKeys } from '../permissions/users-permissions';
 import { usersSchema } from '../schema/users.schema';
@@ -8,16 +9,41 @@ import { Payloads } from './payloads';
 
 type UserInferSelect = InferSelectModel<typeof usersSchema>;
 
-type UserWithOptionalFields = Omit<
+type UserWithOptionalFields = MakeOptional<
   UserInferSelect,
   'name' | 'icon' | 'updatedAt'
-> & {
-  name?: string;
-  icon?: string;
-  updatedAt?: Date;
-};
+>;
 
 export class User implements UserWithOptionalFields {
+  id: string;
+
+  name?: string;
+
+  email: string;
+
+  @Exclude()
+  password: string;
+
+  icon?: string;
+
+  createdAt: Date;
+
+  updatedAt?: Date;
+
+  payloads: Payloads[];
+
+  googleServiceAccounts: GoogleServiceAccounts[];
+
+  permissions: UsersPermissionsKeys[];
+
+  registrationSources: RegistrationSources[];
+
+  isVerified: boolean;
+
+  isTwoFactorEnabled: boolean;
+}
+
+export class UserPoor implements UserWithOptionalFields {
   id: string;
 
   name?: string;
@@ -38,11 +64,15 @@ export class User implements UserWithOptionalFields {
   @Exclude()
   googleServiceAccounts: GoogleServiceAccounts[];
 
+  @Exclude()
   permissions: UsersPermissionsKeys[];
 
+  @Exclude()
   registrationSources: RegistrationSources[];
 
+  @Exclude()
   isVerified: boolean;
 
+  @Exclude()
   isTwoFactorEnabled: boolean;
 }

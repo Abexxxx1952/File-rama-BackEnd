@@ -19,7 +19,7 @@ import { SendTokenArgs } from './types/send-token';
 import { StringResponseArgs } from './types/string-response';
 import { TokenVerificationArgs } from './types/tokenV-verification';
 import { UpdateUserArgs } from './types/update-user';
-import { UserModel } from './types/user';
+import { UserModel, UserPoorModel } from './types/user';
 
 export function ApiUsersGet() {
   return function (
@@ -32,7 +32,7 @@ export function ApiUsersGet() {
     ApiResponse({
       status: 200,
       description: 'Got all users',
-      type: [UserModel],
+      type: [UserPoorModel],
     })(target, propertyKey, descriptor);
     ApiResponse({
       status: 404,
@@ -64,7 +64,7 @@ export function ApiUsersGetFindById() {
     ApiResponse({
       status: 200,
       description: 'Got the user',
-      type: UserModel,
+      type: UserPoorModel,
     })(target, propertyKey, descriptor);
     ApiResponse({
       status: 400,
@@ -98,7 +98,7 @@ export function ApiUsersGetFindOneBy() {
     ApiResponse({
       status: 200,
       description: 'Got the user',
-      type: UserModel,
+      type: UserPoorModel,
     })(target, propertyKey, descriptor);
     ApiResponse({
       status: 400,
@@ -136,7 +136,7 @@ export function ApiUsersGetFindManyBy() {
     ApiResponse({
       status: 200,
       description: 'Got all user by condition',
-      type: [UserModel],
+      type: [UserPoorModel],
     })(target, propertyKey, descriptor);
     ApiResponse({
       status: 400,
@@ -559,6 +559,10 @@ export function ApiUsersPatchUpdate() {
       type: UserModel,
     })(target, propertyKey, descriptor);
     ApiResponse({
+      status: 400,
+      description: 'Bad Request',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
       status: 401,
       description: 'Unauthorized',
     })(target, propertyKey, descriptor);
@@ -592,6 +596,10 @@ export function ApiUsersPatchUpdateFromHeaders() {
       status: 200,
       description: 'User Updated',
       type: UserModel,
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 400,
+      description: 'Bad Request',
     })(target, propertyKey, descriptor);
     ApiResponse({
       status: 401,
@@ -689,7 +697,7 @@ export function ApiUsersPostEmailConfirmationTokenVerification() {
     ApiOperation({ summary: 'Confirm email' })(target, propertyKey, descriptor);
     ApiBody({ type: TokenVerificationArgs })(target, propertyKey, descriptor);
     ApiResponse({
-      status: 201,
+      status: 200,
       description: 'Mail confirmed',
       type: StringResponseArgs,
     })(target, propertyKey, descriptor);
@@ -698,8 +706,8 @@ export function ApiUsersPostEmailConfirmationTokenVerification() {
       description: 'Bad Request',
     })(target, propertyKey, descriptor);
     ApiResponse({
-      status: 409,
-      description: 'Conflict. Email has already been taken',
+      status: 404,
+      description: 'Token not found',
     })(target, propertyKey, descriptor);
     ApiResponse({
       status: 429,
@@ -734,10 +742,6 @@ export function ApiUsersPostEmailConfirmationSendVerificationToken() {
       description: 'Bad Request',
     })(target, propertyKey, descriptor);
     ApiResponse({
-      status: 409,
-      description: 'Conflict. Email has already been taken',
-    })(target, propertyKey, descriptor);
-    ApiResponse({
       status: 429,
       description: 'ThrottlerException: Too Many Requests',
     })(target, propertyKey, descriptor);
@@ -770,8 +774,8 @@ export function ApiUsersPostPasswordRecoveryRequestPasswordRecovery() {
       description: 'Bad Request',
     })(target, propertyKey, descriptor);
     ApiResponse({
-      status: 409,
-      description: 'Conflict. Email has already been taken',
+      status: 404,
+      description: 'User not found',
     })(target, propertyKey, descriptor);
     ApiResponse({
       status: 429,
@@ -801,7 +805,7 @@ export function ApiUsersPostPasswordRecoveryResetPassword() {
     })(target, propertyKey, descriptor);
     ApiBody({ type: NewPasswordArgs })(target, propertyKey, descriptor);
     ApiResponse({
-      status: 201,
+      status: 200,
       description: 'Password reset',
       type: StringResponseArgs,
     })(target, propertyKey, descriptor);
@@ -810,8 +814,8 @@ export function ApiUsersPostPasswordRecoveryResetPassword() {
       description: 'Bad Request',
     })(target, propertyKey, descriptor);
     ApiResponse({
-      status: 409,
-      description: 'Conflict. Email has already been taken',
+      status: 404,
+      description: 'Token not found',
     })(target, propertyKey, descriptor);
     ApiResponse({
       status: 429,

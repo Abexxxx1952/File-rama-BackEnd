@@ -92,14 +92,18 @@ export class AuthService {
     try {
       await this.deleteRtToken(currentUser.email);
 
-      response.cookie('Authentication_accessToken', '', {
+      response.clearCookie('Authentication_accessToken', {
         httpOnly: true,
         expires: new Date(),
+        sameSite: 'lax',
+        path: '/',
       });
 
-      response.cookie('Authentication_refreshToken', '', {
+      response.clearCookie('Authentication_refreshToken', {
         httpOnly: true,
         expires: new Date(),
+        sameSite: 'lax',
+        path: this.configService.getOrThrow<string>('REFRESH_TOKEN_PATH'),
       });
 
       return currentUser;
@@ -184,8 +188,9 @@ export class AuthService {
         !userExists.password ||
         !userExists.isVerified ||
         !userExists.registrationSources.includes(RegistrationSources.Local)
-      )
+      ) {
         throw new ForbiddenException('Access Denied');
+      }
 
       const passwordMatches = await bcrypt.compare(
         password,
@@ -271,13 +276,15 @@ export class AuthService {
   private async updateRtToken(email: string, rt: string): Promise<void> {
     try {
       await this.deleteRtToken(email);
+
       const hash = await bcrypt.hash(rt, 10);
       const token = {
         email,
         tokenValue: hash,
         tokenType: TokenTypeEnum.REFRESH,
       };
-      await this.tokensRepository.create(token);
+
+      const result = await this.tokensRepository.create(token);
     } catch (error) {
       throw error;
     }

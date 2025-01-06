@@ -18,16 +18,18 @@ export class EmailConfirmationController {
   @ApiUsersPostEmailConfirmationTokenVerification()
   public async tokenVerification(
     @Body() tokenVerificationDto: TokenVerificationDto,
-  ) {
+  ): Promise<{ message: string }> {
     return this.emailConfirmationService.tokenVerification(
       tokenVerificationDto,
     );
   }
 
   @Post('sendToken')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.CREATED)
   @ApiUsersPostEmailConfirmationSendVerificationToken()
-  public async sendToken(@Body() sendTokenDto: SendTokenDto) {
+  public async sendToken(
+    @Body() sendTokenDto: SendTokenDto,
+  ): Promise<{ message: string }> {
     return this.emailConfirmationService.sendVerificationToken(
       sendTokenDto.email,
     );
