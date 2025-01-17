@@ -6,7 +6,7 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
-import { TokenTypeEnum } from '../types/tokens';
+import { TokenTypeEnum } from '../types/token';
 
 const TokenType: TokenTypeEnum[] = Object.values(TokenTypeEnum);
 

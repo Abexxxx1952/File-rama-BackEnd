@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { LoginLocalUserDto } from '../../../domain/users/auth/dto/loginUserLocal.dto';
+import { LoginLocalUserDto } from '../../../domain/users/auth/dto/login-user-local.dto';
 
 export class LoginLocalUser implements LoginLocalUserDto {
   @ApiProperty({ type: 'string', format: 'email' })

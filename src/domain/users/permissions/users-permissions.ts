@@ -1,4 +1,4 @@
-import { FilesPermission } from '../../files/permissions/files-permissions';
+import { FilesPermission } from '../../filesSystem/permissions/files-permissions';
 
 export const UsersPermissions = {
   ...FilesPermission,

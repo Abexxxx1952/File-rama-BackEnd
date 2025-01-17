@@ -39,11 +39,11 @@ import {
 import { UsersRepository } from './../repository/users.repository';
 import { User } from './../types/users';
 import { AuthService } from './auth.service';
+import { LoginLocalUserDtoWithoutPassword } from './dto/login-user-local.dto';
 import {
   CreateUserDtoLocalWithoutPassword,
   CreateUserLocalDto,
-} from './dto/createLocal.dto';
-import { LoginLocalUserDtoWithoutPassword } from './dto/loginUserLocal.dto';
+} from './dto/register-local.dto';
 import { AccessTokenAuthGuardFromCookies } from './guards/access-token-from-cookies.guard';
 import { AccessTokenAuthGuardFromHeaders } from './guards/access-token-from-headers.guard';
 import { GitHubAuthGuard } from './guards/gitHub.guard';

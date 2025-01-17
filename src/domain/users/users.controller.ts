@@ -15,7 +15,6 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { plainToInstance } from 'class-transformer';
 import { UUID } from 'crypto';
 import { TransformResultInterceptor } from '@/common/interceptors/transform-result.interceptor';
 import { CurrentUser } from '../../common/decorators/currentUser.decorator';
@@ -36,10 +35,10 @@ import {
   ApiUsersPatchUpdate,
   ApiUsersPatchUpdateFromHeaders,
 } from '../../swagger/users';
-import { CreateUserDtoLocalWithoutPassword } from './auth/dto/createLocal.dto';
+import { CreateUserDtoLocalWithoutPassword } from './auth/dto/register-local.dto';
 import { AccessTokenAuthGuardFromCookies } from './auth/guards/access-token-from-cookies.guard';
 import { AccessTokenAuthGuardFromHeaders } from './auth/guards/access-token-from-headers.guard';
-import { FindUserByConditionsDto } from './dto/find-by-conditions.dto';
+import { FindUsersByConditionsDto } from './dto/find-by-conditions.dto';
 import { UpdateUserDto } from './dto/update.dto';
 import { UsersRepository } from './repository/users.repository';
 import { User, UserPoor } from './types/users';
@@ -79,12 +78,12 @@ export class UsersController {
   async findOneByCondition(
     @Query() condition: { condition: string },
   ): Promise<User> {
-    let parsedCondition: FindUserByConditionsDto;
+    let parsedCondition: FindUsersByConditionsDto;
     try {
       parsedCondition =
-        await this.usersRepository.parsedCondition<FindUserByConditionsDto>(
+        await this.usersRepository.parsedCondition<FindUsersByConditionsDto>(
           condition,
-          FindUserByConditionsDto,
+          FindUsersByConditionsDto,
         );
     } catch (error) {
       throw error;
@@ -102,12 +101,12 @@ export class UsersController {
     @Query() { offset, limit }: PaginationParams,
     @Query() condition: { condition: string },
   ): Promise<User[]> {
-    let parsedCondition: FindUserByConditionsDto;
+    let parsedCondition: FindUsersByConditionsDto;
     try {
       parsedCondition =
-        await this.usersRepository.parsedCondition<FindUserByConditionsDto>(
+        await this.usersRepository.parsedCondition<FindUsersByConditionsDto>(
           condition,
-          FindUserByConditionsDto,
+          FindUsersByConditionsDto,
         );
     } catch (error) {
       throw error;

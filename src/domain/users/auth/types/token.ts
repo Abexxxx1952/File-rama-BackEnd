@@ -10,6 +10,6 @@ export enum TokenTypeEnum {
 
 type InferTokensType = InferSelectModel<typeof tokensSchema>;
 
-export type Tokens = Omit<InferTokensType, 'expiresIn'> & {
+export type Token = Omit<InferTokensType, 'expiresIn'> & {
   expiresIn?: Date;
 };

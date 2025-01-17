@@ -361,4 +361,28 @@ export abstract class BaseAbstractRepository<
     }
     return parsedCondition;
   }
+
+  public async validateObject<T extends object>(
+    object: any,
+    DTO: new () => T,
+  ): Promise<T> {
+    let validatedObject: T;
+
+    try {
+      validatedObject = plainToInstance(DTO, object);
+
+      const errors = await validate(validatedObject);
+
+      if (errors.length > 0) {
+        const errorMessages = errors
+          .map((error) => Object.values(error.constraints).join(', '))
+          .join('; ');
+        throw new BadRequestException(`Validation failed: ${errorMessages}`);
+      }
+    } catch (error) {
+      throw error;
+    }
+
+    return validatedObject;
+  }
 }

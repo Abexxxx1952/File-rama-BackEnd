@@ -6,6 +6,7 @@ import {
   IsString,
   ValidateNested,
 } from 'class-validator';
+import { GoogleServiceAccounts } from '../types/google-service-accounts';
 import { Payloads } from '../types/payloads';
 
 export class UpdateUserDto {
@@ -29,4 +30,10 @@ export class UpdateUserDto {
   @ValidateNested({ each: true })
   @Type(() => Payloads)
   readonly payload?: Payloads[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => GoogleServiceAccounts)
+  readonly googleServiceAccounts?: GoogleServiceAccounts[];
 }

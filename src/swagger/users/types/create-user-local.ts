@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { CreateUserLocalDto } from '../../../domain/users/auth/dto/createLocal.dto';
+import { CreateUserLocalDto } from '../../../domain/users/auth/dto/register-local.dto';
 
 export class CreateUserLocalArgs implements CreateUserLocalDto {
   @ApiPropertyOptional()

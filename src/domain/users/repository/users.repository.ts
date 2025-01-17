@@ -10,7 +10,7 @@ import * as bcrypt from 'bcrypt';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { BaseAbstractRepository } from '../../../database/abstractRepository/base.abstract.repository';
 import { DATABASE_CONNECTION } from '../../../database/database.module';
-import { CreateUserLocalDto } from '../auth/dto/createLocal.dto';
+import { CreateUserLocalDto } from '../auth/dto/register-local.dto';
 import { EmailConfirmationService } from '../auth/email-confirmation/email-confirmation.service';
 import { ParseUserOAuth } from '../auth/types/parse-user-oauth';
 import { RegistrationSources } from '../auth/types/providers-oauth.enum';

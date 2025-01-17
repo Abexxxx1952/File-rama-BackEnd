@@ -3,7 +3,9 @@ import { GoogleServiceAccounts } from '@/domain/users/types/google-service-accou
 
 export class GoogleServiceAccountsModel implements GoogleServiceAccounts {
   @ApiProperty()
-  client_email: string;
+  clientEmail: string;
   @ApiProperty()
-  private_key: string;
+  privateKey: string;
+  @ApiProperty()
+  rootFolderId: string;
 }

@@ -1,5 +1,6 @@
 import fastifyCookie from '@fastify/cookie';
 import fastifyHelmet from '@fastify/helmet';
+import fastifyMultipart from '@fastify/multipart';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import {
@@ -42,6 +43,11 @@ async function bootstrap() {
   });
 
   await app.register(fastifyCookie);
+  await app.register(fastifyMultipart, {
+    limits: {
+      fileSize: 1000 * 1024 * 1024, // 1000 MB
+    },
+  });
 
   createSwagger(app);
 

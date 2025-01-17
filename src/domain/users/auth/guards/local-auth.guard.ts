@@ -7,7 +7,7 @@ import {
 import { plainToClass } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
 import { AuthService } from '../auth.service';
-import { LoginLocalUserDto } from '../dto/loginUserLocal.dto';
+import { LoginLocalUserDto } from '../dto/login-user-local.dto';
 
 @Injectable()
 export class LocalAuthGuard {

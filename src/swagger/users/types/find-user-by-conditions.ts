@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { FindUserByConditionsDto } from '../../../domain/users/dto/find-by-conditions.dto';
+import { FindUsersByConditionsDto } from '../../../domain/users/dto/find-by-conditions.dto';
 
-export class FindUserByConditionsArgs implements FindUserByConditionsDto {
+export class FindUserByConditionsArgs implements FindUsersByConditionsDto {
   @ApiPropertyOptional({ type: 'string', format: 'UUID' })
   readonly id?: string;
 

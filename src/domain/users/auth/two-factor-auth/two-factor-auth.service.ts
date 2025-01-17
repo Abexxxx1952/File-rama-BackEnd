@@ -1,7 +1,7 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { MailService } from '@/mail/mail.service';
 import { TokensRepository } from '../repository/tokens.repository';
-import { Tokens, TokenTypeEnum } from '../types/tokens';
+import { Token, TokenTypeEnum } from '../types/token';
 
 @Injectable()
 export class TwoFactorAuthService {
@@ -54,7 +54,7 @@ export class TwoFactorAuthService {
     }
   }
 
-  private async generateTwoFactorToken(email: string): Promise<Tokens> {
+  private async generateTwoFactorToken(email: string): Promise<Token> {
     const token = Math.floor(
       Math.random() * (1000000 - 100000) + 100000,
     ).toString();

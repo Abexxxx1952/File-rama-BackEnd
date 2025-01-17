@@ -9,7 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { UsersRepository } from '@/domain/users/repository/users.repository';
 import { MailService } from '@/mail/mail.service';
 import { TokensRepository } from '../repository/tokens.repository';
-import { Tokens, TokenTypeEnum } from '../types/tokens';
+import { Token, TokenTypeEnum } from '../types/token';
 import { TokenVerificationDto } from './dto/token-verification.dto';
 
 @Injectable()
@@ -79,7 +79,7 @@ export class EmailConfirmationService {
     }
   }
 
-  private async generateVerificationToken(email: string): Promise<Tokens> {
+  private async generateVerificationToken(email: string): Promise<Token> {
     const token = uuidv4();
     const expiresIn = new Date(new Date().getTime() + 900 * 1000); // 15 minutes
     try {

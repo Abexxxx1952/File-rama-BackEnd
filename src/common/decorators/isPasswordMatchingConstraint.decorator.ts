@@ -3,7 +3,7 @@ import {
   ValidatorConstraint,
   ValidatorConstraintInterface,
 } from 'class-validator';
-import { CreateUserLocalDto } from '../../domain/users/auth/dto/createLocal.dto';
+import { CreateUserLocalDto } from '../../domain/users/auth/dto/register-local.dto';
 
 @ValidatorConstraint({ name: 'IsPasswordsMatching', async: false })
 export class IsPasswordsMatchingConstraint

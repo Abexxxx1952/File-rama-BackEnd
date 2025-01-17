@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { MailService } from '@/mail/mail.service';
 import { UsersRepository } from '../../repository/users.repository';
 import { TokensRepository } from '../repository/tokens.repository';
-import { Tokens, TokenTypeEnum } from '../types/tokens';
+import { Token, TokenTypeEnum } from '../types/token';
 import { NewPasswordDto } from './dto/new-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 
@@ -89,7 +89,7 @@ export class PasswordRecoveryService {
     }
   }
 
-  private async generatePasswordResetToken(email: string): Promise<Tokens> {
+  private async generatePasswordResetToken(email: string): Promise<Token> {
     const token = uuidv4();
     const expiresIn = new Date(new Date().getTime() + 900 * 1000); // 15 minutes
     try {

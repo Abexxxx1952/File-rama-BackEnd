@@ -10,8 +10,9 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
-import { fileSchema } from 'src/domain/files/schema/files.schema';
+import { filesSchema } from 'src/domain/filesSystem/schema/files.schema';
 import { fileStatsSchema } from 'src/domain/stats/schema/stats.schema';
+import { foldersSchema } from '@/domain/filesSystem/schema/folder.schema';
 import { RegistrationSources } from '../auth/types/providers-oauth.enum';
 import { UsersPermissions } from '../permissions/users-permissions';
 
@@ -65,5 +66,6 @@ export const usersRelations = relations(usersSchema, ({ one, many }) => ({
     fields: [usersSchema.id],
     references: [fileStatsSchema.userId],
   }),
-  files: many(fileSchema),
+  files: many(filesSchema),
+  folders: many(foldersSchema),
 }));

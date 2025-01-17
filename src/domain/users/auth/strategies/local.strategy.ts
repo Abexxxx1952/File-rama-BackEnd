@@ -4,7 +4,7 @@ import { plainToClass } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
 import { Strategy } from 'passport-local';
 import { AuthService } from '../auth.service';
-import { LoginLocalUserDto } from '../dto/loginUserLocal.dto';
+import { LoginLocalUserDto } from '../dto/login-user-local.dto';
 import { AttachedUser } from '../types/attachedUser';
 
 @Injectable()

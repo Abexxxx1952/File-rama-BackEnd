@@ -19,7 +19,7 @@ import { AttachedUser } from './types/attachedUser';
 import { JwtPayload } from './types/jwtPayload';
 import { ParseUserOAuth } from './types/parse-user-oauth';
 import { RegistrationSources } from './types/providers-oauth.enum';
-import { Tokens, TokenTypeEnum } from './types/tokens';
+import { Token, TokenTypeEnum } from './types/token';
 
 @Injectable()
 export class AuthService {
@@ -119,7 +119,7 @@ export class AuthService {
     currentUser: AttachedUserWithRt,
     response: FastifyReply,
   ): Promise<AtRtTokens> {
-    let refreshToken: Tokens;
+    let refreshToken: Token;
     try {
       await this.usersRepository.findById(currentUser.id);
     } catch (error) {
