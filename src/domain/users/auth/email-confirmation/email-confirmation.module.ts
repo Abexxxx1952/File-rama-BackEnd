@@ -1,7 +1,5 @@
 import { forwardRef, Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
 import { MailModule } from '@/mail/mail.module';
-import { MailService } from '@/mail/mail.service';
 import { UsersModule } from '../../users.module';
 import { AuthModule } from '../auth.module';
 import { EmailConfirmationController } from './email-confirmation.controller';

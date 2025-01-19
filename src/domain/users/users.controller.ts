@@ -131,7 +131,7 @@ export class UsersController {
   @UseInterceptors(CacheInterceptor)
   @ApiUsersPatchUpdate()
   async updateUser(
-    @CurrentUser('id') currentUserId: string,
+    @CurrentUser('id') currentUserId: UUID,
     @Body() updateUserDto: UpdateUserDto,
   ): Promise<User> {
     return await this.usersRepository.updateUserById(
@@ -152,7 +152,7 @@ export class UsersController {
   @UseInterceptors(CacheInterceptor)
   @ApiUsersPatchUpdateFromHeaders()
   async updateUserFromHeaders(
-    @CurrentUser('id') currentUserId: string,
+    @CurrentUser('id') currentUserId: UUID,
     @Body() updateUserDto: UpdateUserDto,
   ): Promise<User> {
     return await this.usersRepository.updateUserById(
@@ -171,7 +171,7 @@ export class UsersController {
   })
   @UseInterceptors(CacheInterceptor)
   @ApiUsersDeleteDeleteUser()
-  async deleteUser(@CurrentUser('id') currentUserId: string): Promise<User> {
+  async deleteUser(@CurrentUser('id') currentUserId: UUID): Promise<User> {
     return await this.usersRepository.deleteById(currentUserId);
   }
 
@@ -186,7 +186,7 @@ export class UsersController {
   @UseInterceptors(CacheInterceptor)
   @ApiUsersDeleteDeleteUserFromHeaders()
   async deleteUserFromHeaders(
-    @CurrentUser('id') currentUserId: string,
+    @CurrentUser('id') currentUserId: UUID,
   ): Promise<User> {
     return await this.usersRepository.deleteById(currentUserId);
   }

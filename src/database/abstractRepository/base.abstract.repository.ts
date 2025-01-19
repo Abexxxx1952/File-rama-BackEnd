@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { and, Column, eq, InferInsertModel } from 'drizzle-orm';
+import { and, Column, eq, InferInsertModel, isNull } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { PgTable, TableConfig } from 'drizzle-orm/pg-core';
 import { BaseInterfaceRepository } from './base.interface.repository';
@@ -149,7 +149,7 @@ export abstract class BaseAbstractRepository<
       const conditions = Object.entries(condition).map(([key, value]) => {
         const column = this.table[key as keyof Schema];
         if (column instanceof Column) {
-          return eq(column, value);
+          return value === null ? isNull(column) : eq(column, value);
         } else {
           throw new BadRequestException(`Invalid key ${key} in condition`);
         }
@@ -161,10 +161,10 @@ export abstract class BaseAbstractRepository<
         .where(and(...conditions))
         .$dynamic();
 
-      if (offset !== undefined) {
+      if (offset !== undefined || offset !== null) {
         query = query.offset(offset);
       }
-      if (limit !== undefined) {
+      if (limit !== undefined || limit !== null) {
         query = query.limit(limit);
       }
 

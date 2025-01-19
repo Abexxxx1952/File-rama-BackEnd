@@ -15,13 +15,10 @@ export class CreateFileDto {
   @IsEnum(NameConflictChoice)
   readonly conflictChoice?: NameConflictChoice;
 
-  @IsBufferOrReadable()
-  readonly fileStream: Readable | Stream | Buffer;
-
   @IsOptional()
   @IsString()
   @IsNotEmpty()
-  readonly parentFolder?: string;
+  readonly parentFolderId?: string;
 
   @IsOptional()
   @IsString()

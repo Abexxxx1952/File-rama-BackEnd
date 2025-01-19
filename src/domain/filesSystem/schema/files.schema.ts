@@ -16,13 +16,16 @@ export const filesSchema = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     userId: uuid('user_id').references(() => usersSchema.id),
-    fileId: text('file_id').notNull(),
     fileUrl: text('file_url').notNull(),
     fileDownloadUrl: text('file_download_url').notNull(),
     fileName: text('file_name').notNull(),
     fileExtension: text('file_extension').notNull(),
     fileSize: text('file_size').notNull(),
     parentFolderId: uuid('parent_folder_id').references(() => foldersSchema.id),
+    fileGoogleDriveId: text('file_google_drive_id').notNull(),
+    fileGoogleDriveParentFolderId: text(
+      'file_google_drive_parent_folder_id',
+    ).notNull(),
     uploadDate: timestamp('upload_date').defaultNow().notNull(),
     fileDescription: text('file_description'),
     isPublic: boolean('is_public').default(false).notNull(),

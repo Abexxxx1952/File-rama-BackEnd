@@ -1,11 +1,9 @@
+import { File } from './file';
 import { StatusUpload } from './file-upload-event';
 
 export class FileUploadResult {
-  fileName: string;
-  fileId?: string;
-  downloadLink?: string;
-  webViewLink?: string;
-  size?: string;
+  file?: File;
+  fileName?: string;
   status: StatusUpload;
   account?: string;
   error?: string;

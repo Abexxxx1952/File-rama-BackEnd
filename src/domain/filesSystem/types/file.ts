@@ -10,13 +10,14 @@ type FileWithOptionalFields = MakeOptional<FileInferSelect, 'fileDescription'>;
 export class File implements FileWithOptionalFields {
   id: string;
   userId: string;
-  fileId: string;
   fileUrl: string;
   fileDownloadUrl: string;
   fileName: string;
   fileExtension: string;
   fileSize: string;
   parentFolderId: string;
+  fileGoogleDriveId: string;
+  fileGoogleDriveParentFolderId: string;
   uploadDate: Date;
   @Exclude()
   isPublic: boolean;

@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { and, eq, isNull } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { BaseAbstractRepository } from '@/database/abstractRepository/base.abstract.repository';
 import { DATABASE_CONNECTION } from '@/database/database.module';

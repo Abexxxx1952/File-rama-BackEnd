@@ -5,7 +5,7 @@ enum UpdateRole {
   Writer = 'writer',
 }
 
-export class UpdateFilePermissionsDto {
+export class CreateFilePermissionsDto {
   @IsString()
   @IsNotEmpty()
   readonly fileId: string;
