@@ -26,6 +26,9 @@ export const filesSchema = pgTable(
     fileGoogleDriveParentFolderId: text(
       'file_google_drive_parent_folder_id',
     ).notNull(),
+    fileGoogleDriveClientEmail: text(
+      'file_google_drive_client_email',
+    ).notNull(),
     uploadDate: timestamp('upload_date').defaultNow().notNull(),
     fileDescription: text('file_description'),
     isPublic: boolean('is_public').default(false).notNull(),

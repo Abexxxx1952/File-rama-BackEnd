@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsNotEmpty,
@@ -36,4 +36,16 @@ export class UpdateUserDto {
   @ValidateNested({ each: true })
   @Type(() => GoogleServiceAccounts)
   readonly googleServiceAccounts?: GoogleServiceAccounts[];
+}
+
+export class UpdateUserDtoLocalWithoutPasswords extends UpdateUserDto {
+  @Transform(({ obj }) => {
+    return `[${typeof obj.password}]`;
+  })
+  readonly password: string;
+
+  @Transform(({ obj }) => {
+    return `[${typeof obj.googleServiceAccounts}]`;
+  })
+  readonly googleServiceAccounts: GoogleServiceAccounts[];
 }

@@ -1,4 +1,10 @@
-import { CanActivate, ExecutionContext, mixin, Type } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  mixin,
+  Type,
+} from '@nestjs/common';
 import { UsersPermissionsKeys } from '@/domain/users/permissions/users-permissions';
 
 export const PermissionGuard = (
@@ -9,9 +15,17 @@ export const PermissionGuard = (
       const request = context.switchToHttp().getRequest();
       const user = request.user;
 
-      return routePermission.every((item: UsersPermissionsKeys) =>
-        user?.permissions.includes(item),
+      const hasPermission = routePermission.every(
+        (item: UsersPermissionsKeys) => user?.permissions.includes(item),
       );
+
+      if (!hasPermission) {
+        throw new ForbiddenException(
+          'You do not have the necessary permissions to access this resource.',
+        );
+      }
+
+      return true;
     }
   }
 

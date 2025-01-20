@@ -26,6 +26,7 @@ import {
 } from '../../common/interceptors/cache.interceptor';
 import { PaginationParams } from '../../database/paginationDto/pagination.dto';
 import {
+  ApiFindWithRelations,
   ApiUsersDeleteDeleteUser,
   ApiUsersDeleteDeleteUserFromHeaders,
   ApiUsersGet,
@@ -35,12 +36,16 @@ import {
   ApiUsersPatchUpdate,
   ApiUsersPatchUpdateFromHeaders,
 } from '../../swagger/users';
-import { CreateUserDtoLocalWithoutPassword } from './auth/dto/register-local.dto';
 import { AccessTokenAuthGuardFromCookies } from './auth/guards/access-token-from-cookies.guard';
 import { AccessTokenAuthGuardFromHeaders } from './auth/guards/access-token-from-headers.guard';
 import { FindUsersByConditionsDto } from './dto/find-by-conditions.dto';
-import { UpdateUserDto } from './dto/update.dto';
+import { relationsUserDto } from './dto/relations.dto';
+import {
+  UpdateUserDto,
+  UpdateUserDtoLocalWithoutPasswords,
+} from './dto/update.dto';
 import { UsersRepository } from './repository/users.repository';
+import { UserWithRelatedEntity } from './types/user-with-related-entity';
 import { User, UserPoor } from './types/users';
 
 @ApiTags('v1/users')
@@ -68,6 +73,33 @@ export class UsersController {
   @ApiUsersGetFindById()
   async findOneById(@Param('id', ParseUUIDPipe) id: UUID): Promise<User> {
     return await this.usersRepository.findById(id);
+  }
+
+  @Get('findWithRelations')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AccessTokenAuthGuardFromCookies)
+  @UseInterceptors(new TransformResultInterceptor(User))
+  @UseInterceptors(CacheInterceptor)
+  @ApiFindWithRelations()
+  async findByIdWithRelations(
+    @CurrentUser('id') currentUserId: UUID,
+    @Query() condition: { condition: string },
+  ): Promise<UserWithRelatedEntity> {
+    let parsedRelations: relationsUserDto;
+    try {
+      parsedRelations =
+        await this.usersRepository.parsedCondition<relationsUserDto>(
+          condition,
+          relationsUserDto,
+        );
+    } catch (error) {
+      throw error;
+    }
+
+    return await this.usersRepository.findByIdWithRelations<UserWithRelatedEntity>(
+      currentUserId,
+      parsedRelations.relations,
+    );
   }
 
   @Get('findOneBy')
@@ -120,7 +152,7 @@ export class UsersController {
   }
 
   @Patch('update')
-  @ParseRequestBodyWhenLogging(CreateUserDtoLocalWithoutPassword)
+  @ParseRequestBodyWhenLogging(UpdateUserDtoLocalWithoutPasswords)
   @UseGuards(AccessTokenAuthGuardFromCookies)
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(new TransformResultInterceptor(User))
@@ -141,7 +173,7 @@ export class UsersController {
   }
 
   @Patch('updateFromHeaders')
-  @ParseRequestBodyWhenLogging(CreateUserDtoLocalWithoutPassword)
+  @ParseRequestBodyWhenLogging(UpdateUserDtoLocalWithoutPasswords)
   @UseGuards(AccessTokenAuthGuardFromHeaders)
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(new TransformResultInterceptor(User))

@@ -14,6 +14,7 @@ import { FindUserByConditionsArgs } from './types/find-user-by-conditions';
 import { FindUsersByConditionWithPaginationParams } from './types/find-users-by-string-condition';
 import { LoginLocalUser } from './types/login-local-user';
 import { NewPasswordArgs } from './types/new-password';
+import { RelationsUserArgs } from './types/relations-user';
 import { ResetPasswordArgs } from './types/reset-password';
 import { SendTokenArgs } from './types/send-token';
 import { StringResponseArgs } from './types/string-response';
@@ -81,6 +82,47 @@ export function ApiUsersGetFindById() {
   };
 }
 
+export function ApiFindWithRelations() {
+  return function (
+    target: any,
+    propertyKey: string,
+    descriptor: PropertyDescriptor,
+  ) {
+    ApiOperation({ summary: 'Get user with relations' })(
+      target,
+      propertyKey,
+      descriptor,
+    );
+    ApiQuery({
+      type: RelationsUserArgs,
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 200,
+      description: 'Got the user with relations',
+      type: UserPoorModel,
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 400,
+      description: 'Bad Request',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 400,
+      description: 'Invalid JSON format',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 401,
+      description: 'Unauthorized',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 429,
+      description: 'ThrottlerException: Too Many Requests',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 500,
+      description: 'Internal Server Error',
+    })(target, propertyKey, descriptor);
+  };
+}
 export function ApiUsersGetFindOneBy() {
   return function (
     target: any,

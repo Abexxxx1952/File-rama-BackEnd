@@ -8,6 +8,9 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { filesSchema } from '@/domain/filesSystem/schema/files.schema';
+import { foldersSchema } from '@/domain/filesSystem/schema/folder.schema';
+import { fileStatsSchema } from '@/domain/stats/schema/stats.schema';
 import { BaseAbstractRepository } from '../../../database/abstractRepository/base.abstract.repository';
 import { DATABASE_CONNECTION } from '../../../database/database.module';
 import { CreateUserLocalDto } from '../auth/dto/register-local.dto';
@@ -31,6 +34,23 @@ export class UsersRepository extends BaseAbstractRepository<
     private readonly emailConfirmationService: EmailConfirmationService,
   ) {
     super(database, usersSchema, 'User');
+    this.relatedTables = {
+      folders: {
+        tableName: foldersSchema,
+        ownField: usersSchema.id,
+        relationField: foldersSchema.userId,
+      },
+      files: {
+        tableName: filesSchema,
+        ownField: usersSchema.id,
+        relationField: filesSchema.userId,
+      },
+      fileStats: {
+        tableName: fileStatsSchema,
+        ownField: usersSchema.id,
+        relationField: fileStatsSchema.userId,
+      },
+    };
   }
   public async createUserLocal(
     createUserLocalDto: CreateUserLocalDto,

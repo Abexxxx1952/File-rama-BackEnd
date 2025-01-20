@@ -18,6 +18,7 @@ export class File implements FileWithOptionalFields {
   parentFolderId: string;
   fileGoogleDriveId: string;
   fileGoogleDriveParentFolderId: string;
+  fileGoogleDriveClientEmail: string;
   uploadDate: Date;
   @Exclude()
   isPublic: boolean;

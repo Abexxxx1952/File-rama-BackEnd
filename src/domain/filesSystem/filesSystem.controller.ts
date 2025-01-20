@@ -28,9 +28,9 @@ import {
 } from '@/common/interceptors/cache.interceptor';
 import { PaginationParams } from '@/database/paginationDto/pagination.dto';
 import { AccessTokenAuthGuardFromCookies } from '../users/auth/guards/access-token-from-cookies.guard';
-import { CreateFileDto } from './dto/create-file.dto';
+import { CreateFilePermissionsDto } from './dto/create-file-permissions';
 import { CreateFolderDto } from './dto/create-folder.dto';
-import { FindFilesByConditionsDto } from './dto/find-file-by-conditions.dto';
+import { FindFilesByConditionsDto } from './dto/find-public-file-by-conditions.dto';
 import { UpdateFileDto } from './dto/update-file.dto';
 import { UpdateFolderDto } from './dto/update-folder.dto';
 import { FilesSystemService } from './filesSystem.service';
@@ -120,19 +120,14 @@ export class FilesController {
   @UseGuards(AccessTokenAuthGuardFromCookies)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/filesSystem/'],
+    cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/'],
   })
   @UseInterceptors(CacheInterceptor)
   async createFile(
     @CurrentUser('id') currentUserId: UUID,
-    @Body() createFileDto: CreateFileDto,
     @Req() request: FastifyRequest,
   ): Promise<FileUploadResult[]> {
-    return await this.filesSystemService.createFile(
-      currentUserId,
-      createFileDto,
-      request,
-    );
+    return await this.filesSystemService.createFile(currentUserId, request);
   }
 
   @Post('createFolder')
@@ -140,7 +135,7 @@ export class FilesController {
   @UseGuards(AccessTokenAuthGuardFromCookies)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/filesSystem/'],
+    cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/'],
   })
   @UseInterceptors(CacheInterceptor)
   async createFolder(
@@ -153,12 +148,48 @@ export class FilesController {
     );
   }
 
+  @Patch('createFilePermissions')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AccessTokenAuthGuardFromCookies)
+  @CacheOptionInvalidateCache({
+    cache: CacheOptions.InvalidateCacheByKey,
+    cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/'],
+  })
+  @UseInterceptors(CacheInterceptor)
+  async createFilePermissions(
+    @CurrentUser('id') currentUserId: UUID,
+    @Body() createFilePermissionsDto: CreateFilePermissionsDto,
+  ) {
+    return await this.filesSystemService.createFilePermissions(
+      currentUserId,
+      createFilePermissionsDto,
+    );
+  }
+
+  @Patch('deleteFilePermissions')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AccessTokenAuthGuardFromCookies)
+  @CacheOptionInvalidateCache({
+    cache: CacheOptions.InvalidateCacheByKey,
+    cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/'],
+  })
+  @UseInterceptors(CacheInterceptor)
+  async deleteFilePermissions(
+    @CurrentUser('id') currentUserId: UUID,
+    @Body() fileId: { fileId: UUID },
+  ) {
+    return await this.filesSystemService.deleteFilePermissions(
+      currentUserId,
+      fileId.fileId,
+    );
+  }
+
   @Patch('updateFile')
   @UseGuards(AccessTokenAuthGuardFromCookies)
   @HttpCode(HttpStatus.OK)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/filesSystem/'],
+    cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/'],
   })
   @UseInterceptors(CacheInterceptor)
   async updateFile(
@@ -176,7 +207,7 @@ export class FilesController {
   @HttpCode(HttpStatus.OK)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/filesSystem/'],
+    cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/'],
   })
   @UseInterceptors(CacheInterceptor)
   async updateFolder(
@@ -194,7 +225,7 @@ export class FilesController {
   @HttpCode(HttpStatus.OK)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/filesSystem/'],
+    cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/'],
   })
   @UseInterceptors(CacheInterceptor)
   async deleteFile(
@@ -209,7 +240,7 @@ export class FilesController {
   @HttpCode(HttpStatus.OK)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/filesSystem/'],
+    cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/'],
   })
   @UseInterceptors(CacheInterceptor)
   async deleteFolder(

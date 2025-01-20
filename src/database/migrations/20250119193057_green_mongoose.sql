@@ -1,0 +1,1 @@
+ALTER TABLE "files" ADD COLUMN "file_google_drive_client_email" text NOT NULL;

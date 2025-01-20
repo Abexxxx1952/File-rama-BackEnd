@@ -2,7 +2,6 @@ import { Type } from 'class-transformer';
 import {
   IsDate,
   IsNotEmpty,
-  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
@@ -48,6 +47,21 @@ export class FindFilesByConditionsDto {
   @IsString()
   @IsNotEmpty()
   readonly parentFolderId?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  fileGoogleDriveId: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  fileGoogleDriveParentFolderId: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  fileGoogleDriveClientEmail: string;
 
   @IsOptional()
   @IsDate()

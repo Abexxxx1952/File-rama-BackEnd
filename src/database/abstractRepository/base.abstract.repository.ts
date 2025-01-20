@@ -5,25 +5,34 @@ import {
 } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { and, Column, eq, InferInsertModel, isNull } from 'drizzle-orm';
+import { UUID } from 'crypto';
+import {
+  and,
+  Column,
+  ColumnBaseConfig,
+  ColumnDataType,
+  eq,
+  InferInsertModel,
+  isNull,
+} from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { PgTable, TableConfig } from 'drizzle-orm/pg-core';
+import { RelatedTables, TableWithId } from '../types/types';
 import { BaseInterfaceRepository } from './base.interface.repository';
-
-type TableWithId<Schema extends PgTable<TableConfig>> = Schema & {
-  id: Column<any, object, object>;
-};
 
 export abstract class BaseAbstractRepository<
   T,
   Schema extends TableWithId<PgTable<TableConfig>>,
 > implements BaseInterfaceRepository<T, Schema>
 {
+  protected relatedTables: RelatedTables;
   protected constructor(
     public readonly database: NodePgDatabase<{ [key: string]: Schema }>,
     public readonly table: Schema,
     public readonly entityName: string,
-  ) {}
+  ) {
+    this.relatedTables = {};
+  }
 
   /**
    * Create a new entity.
@@ -80,7 +89,7 @@ export abstract class BaseAbstractRepository<
    * @param id - The ID of the entity.
    * @returns The found entity.
    */
-  public async findById(id: string | number): Promise<T> {
+  public async findById(id: string | number | UUID): Promise<T> {
     try {
       const result = await this.database
         .select()
@@ -101,12 +110,63 @@ export abstract class BaseAbstractRepository<
     }
   }
 
+  /**
+   * Find an entity by its ID with related entities.
+   * @param id - The ID of the entity.
+   * @param include - The related entities to include.
+   * @returns The found entity.
+   */
+  public async findByIdWithRelations<K>(
+    id: string | number | UUID,
+    include: string[],
+  ): Promise<K> {
+    try {
+      const joins = include.map((relation) => {
+        const relatedTable = this.relatedTables[relation];
+        if (!relatedTable) {
+          throw new BadRequestException(`Invalid relation: ${relation}`);
+        }
+        return relatedTable;
+      });
+
+      let query = this.database
+        .select()
+        .from(this.table)
+        .where(eq(this.table.id, id))
+        .limit(1)
+        .$dynamic();
+
+      joins.forEach((join) => {
+        query.leftJoin(join.tableName, eq(join.ownField, join.relationField));
+      });
+
+      const result = await query;
+      if (!result || result.length === 0) {
+        throw new NotFoundException(
+          `${this.entityName} with ID ${id} not found`,
+        );
+      }
+
+      return result[0] as K;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(error.message);
+    }
+  }
+
+  /**
+   * Find one entity by condition.
+   * @param condition - The condition to filter the entity.
+   * @returns The found entity.
+   */
   public async findOneByCondition(condition: Partial<T>): Promise<T> {
     try {
       const conditions = Object.entries(condition).map(([key, value]) => {
         const column = this.table[key as keyof Schema];
         if (column instanceof Column) {
-          return eq(column, value);
+          return value === null ? isNull(column) : eq(column, value);
         } else {
           throw new BadRequestException(`Invalid key ${key} in condition`);
         }
@@ -136,8 +196,67 @@ export abstract class BaseAbstractRepository<
   }
 
   /**
+   * Find one entity by condition with related entities.
+   * @param condition - The condition to filter the entity.
+   * @param include - The related entities to include.
+   * @returns The found entity.
+   */
+  public async findOneByConditionWithRelations<K>(
+    condition: Partial<T>,
+    include: string[],
+  ): Promise<K> {
+    try {
+      const conditions = Object.entries(condition).map(([key, value]) => {
+        const column = this.table[key as keyof Schema];
+        if (column instanceof Column) {
+          return value === null ? isNull(column) : eq(column, value);
+        } else {
+          throw new BadRequestException(`Invalid key ${key} in condition`);
+        }
+      });
+
+      const joins = include.map((relation) => {
+        const relatedTable = this.relatedTables[relation];
+        if (!relatedTable) {
+          throw new BadRequestException(`Invalid relation: ${relation}`);
+        }
+        return relatedTable;
+      });
+
+      let query = this.database
+        .select()
+        .from(this.table)
+        .where(and(...conditions))
+        .limit(1)
+        .$dynamic();
+
+      joins.forEach((join) => {
+        query.leftJoin(join.tableName, eq(join.ownField, join.relationField));
+      });
+
+      const result = await query;
+      if (!result || result.length === 0) {
+        throw new NotFoundException(`${this.entityName} not found`);
+      }
+
+      return result[0] as K;
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(error.message);
+    }
+  }
+
+  /**
    * Find all entities by a condition.
    * @param condition - The condition to filter entities.
+   * @param offset - The number of entities to skip.
+   * @param limit - The maximum number of entities to return.
    * @returns An array of entities.
    */
   public async findAllByCondition(
@@ -222,7 +341,10 @@ export abstract class BaseAbstractRepository<
    * @param data - The data to update.
    * @returns The updated entity.
    */
-  public async updateById(id: string | number, data: Partial<T>): Promise<T> {
+  public async updateById(
+    id: string | number | UUID,
+    data: Partial<T>,
+  ): Promise<T> {
     try {
       const result = await this.database
         .update(this.table)
@@ -243,6 +365,12 @@ export abstract class BaseAbstractRepository<
     }
   }
 
+  /**
+   * Update an entity by condition.
+   * @param condition - The condition to update entities.
+   * @param data - The data to update.
+   * @returns The updated entity.
+   */
   public async updateByCondition(
     condition: Partial<T>,
     data: Partial<T>,
@@ -285,7 +413,7 @@ export abstract class BaseAbstractRepository<
    * @param id - The ID of the entity.
    * @returns The deleted entity.
    */
-  public async deleteById(id: string | number): Promise<T> {
+  public async deleteById(id: string | number | UUID): Promise<T> {
     try {
       const result = await this.database
         .delete(this.table)
@@ -338,6 +466,13 @@ export abstract class BaseAbstractRepository<
       throw new InternalServerErrorException(error.message);
     }
   }
+
+  /**
+   * Parse entities by a condition.
+   * @param condition - The condition to filter entities.
+   * @param DTO - The DTO to validate entities.
+   * @returns Parsed entities.
+   */
   public async parsedCondition<T extends object>(
     condition: { condition: string },
     DTO: new () => T,
@@ -362,6 +497,12 @@ export abstract class BaseAbstractRepository<
     return parsedCondition;
   }
 
+  /**
+   * Validate entities by a DTO.
+   * @param object - The object to validate.
+   * @param DTO - The DTO to validate object.
+   * @returns Validated object.
+   */
   public async validateObject<T extends object>(
     object: any,
     DTO: new () => T,

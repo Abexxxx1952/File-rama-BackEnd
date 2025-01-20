@@ -1,6 +1,4 @@
 import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
-import { Readable, Stream } from 'stream';
-import { IsBufferOrReadable } from '@/common/decorators/IsBufferOrReadable.decorator';
 import { NameConflictChoice } from '../types/upload-name-conflict';
 
 export class CreateFileDto {
