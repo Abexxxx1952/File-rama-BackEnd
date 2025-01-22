@@ -10,6 +10,7 @@ export const fileStatsSchema = pgTable(
       .references(() => usersSchema.id)
       .unique(),
     fileCount: integer('file_count').notNull().default(0),
+    folderCount: integer('file_count').notNull().default(0),
     totalSize: integer('total_size').notNull().default(0),
   },
   (table) => {

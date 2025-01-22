@@ -26,13 +26,13 @@ import {
 } from '../../common/interceptors/cache.interceptor';
 import { PaginationParams } from '../../database/paginationDto/pagination.dto';
 import {
-  ApiFindWithRelations,
   ApiUsersDeleteDeleteUser,
   ApiUsersDeleteDeleteUserFromHeaders,
   ApiUsersGet,
   ApiUsersGetFindById,
   ApiUsersGetFindManyBy,
   ApiUsersGetFindOneBy,
+  ApiUsersGetFindWithRelations,
   ApiUsersPatchUpdate,
   ApiUsersPatchUpdateFromHeaders,
 } from '../../swagger/users';
@@ -80,7 +80,7 @@ export class UsersController {
   @UseGuards(AccessTokenAuthGuardFromCookies)
   @UseInterceptors(new TransformResultInterceptor(User))
   @UseInterceptors(CacheInterceptor)
-  @ApiFindWithRelations()
+  @ApiUsersGetFindWithRelations()
   async findByIdWithRelations(
     @CurrentUser('id') currentUserId: UUID,
     @Query() condition: { condition: string },

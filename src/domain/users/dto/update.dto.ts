@@ -45,7 +45,7 @@ export class UpdateUserDtoLocalWithoutPasswords extends UpdateUserDto {
   readonly password: string;
 
   @Transform(({ obj }) => {
-    return `[${typeof obj.googleServiceAccounts}]`;
+    return `[clientEmail: ${obj.googleServiceAccounts.clientEmail}; privateKey:${typeof obj.googleServiceAccounts}; rootFolderId: ${obj.googleServiceAccounts.rootFolderId}]`;
   })
   readonly googleServiceAccounts: GoogleServiceAccounts[];
 }

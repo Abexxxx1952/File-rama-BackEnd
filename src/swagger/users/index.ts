@@ -40,6 +40,10 @@ export function ApiUsersGet() {
       description: 'Users not found',
     })(target, propertyKey, descriptor);
     ApiResponse({
+      status: 429,
+      description: 'ThrottlerException: Too Many Requests',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
       status: 500,
       description: 'Internal Server Error',
     })(target, propertyKey, descriptor);
@@ -76,23 +80,25 @@ export function ApiUsersGetFindById() {
       description: 'User not found',
     })(target, propertyKey, descriptor);
     ApiResponse({
+      status: 429,
+      description: 'ThrottlerException: Too Many Requests',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
       status: 500,
       description: 'Internal Server Error',
     })(target, propertyKey, descriptor);
   };
 }
 
-export function ApiFindWithRelations() {
+export function ApiUsersGetFindWithRelations() {
   return function (
     target: any,
     propertyKey: string,
     descriptor: PropertyDescriptor,
   ) {
-    ApiOperation({ summary: 'Get user with relations' })(
-      target,
-      propertyKey,
-      descriptor,
-    );
+    ApiOperation({
+      summary: 'Get user with relations. (AccessToken required)',
+    })(target, propertyKey, descriptor);
     ApiQuery({
       type: RelationsUserArgs,
     })(target, propertyKey, descriptor);
@@ -108,6 +114,10 @@ export function ApiFindWithRelations() {
     ApiResponse({
       status: 400,
       description: 'Invalid JSON format',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 400,
+      description: 'Validation failed: ',
     })(target, propertyKey, descriptor);
     ApiResponse({
       status: 401,
@@ -142,17 +152,14 @@ export function ApiUsersGetFindOneBy() {
       description: 'Got the user',
       type: UserPoorModel,
     })(target, propertyKey, descriptor);
-    ApiResponse({
-      status: 400,
-      description: 'Invalid JSON format',
-    })(target, propertyKey, descriptor);
-    ApiResponse({
-      status: 400,
-      description: 'Validation failed: ',
-    })(target, propertyKey, descriptor);
+
     ApiResponse({
       status: 404,
       description: 'User not found',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 429,
+      description: 'ThrottlerException: Too Many Requests',
     })(target, propertyKey, descriptor);
     ApiResponse({
       status: 500,
@@ -181,16 +188,12 @@ export function ApiUsersGetFindManyBy() {
       type: [UserPoorModel],
     })(target, propertyKey, descriptor);
     ApiResponse({
-      status: 400,
-      description: 'Invalid JSON format',
-    })(target, propertyKey, descriptor);
-    ApiResponse({
-      status: 400,
-      description: 'Validation failed: ',
-    })(target, propertyKey, descriptor);
-    ApiResponse({
       status: 404,
       description: 'Users not found',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 429,
+      description: 'ThrottlerException: Too Many Requests',
     })(target, propertyKey, descriptor);
     ApiResponse({
       status: 500,

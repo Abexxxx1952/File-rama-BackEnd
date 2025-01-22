@@ -27,6 +27,20 @@ import {
   CacheOptions,
 } from '@/common/interceptors/cache.interceptor';
 import { PaginationParams } from '@/database/paginationDto/pagination.dto';
+import {
+  ApiFilesSystemDeleteDeleteFile,
+  ApiFilesSystemDeleteDeleteFolder,
+  ApiFilesSystemGet,
+  ApiFilesSystemGetFindPublicFiles,
+  ApiFilesSystemPatchCreateFilePermissions,
+  ApiFilesSystemPatchDeleteFilePermissions,
+  ApiFilesSystemPatchUpdateFile,
+  ApiFilesSystemPatchUpdateFolder,
+  ApiFilesSystemPostCreateFile,
+  ApiFilesSystemPostCreateFolder,
+  ApiFilesSystemsGetFindFileById,
+  ApiFilesSystemsGetFindFolderById,
+} from '@/swagger/filesSystem';
 import { AccessTokenAuthGuardFromCookies } from '../users/auth/guards/access-token-from-cookies.guard';
 import { CreateFilePermissionsDto } from './dto/create-file-permissions';
 import { CreateFolderDto } from './dto/create-folder.dto';
@@ -52,6 +66,7 @@ export class FilesController {
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(CacheInterceptor)
   @UseGuards(AccessTokenAuthGuardFromCookies)
+  @ApiFilesSystemGet()
   async findSlice(
     @CurrentUser('id') currentUserId: UUID,
     @Query() { parentFolderId }: { parentFolderId?: string },
@@ -69,6 +84,7 @@ export class FilesController {
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(CacheInterceptor)
   @UseGuards(AccessTokenAuthGuardFromCookies)
+  @ApiFilesSystemsGetFindFileById()
   async findFileById(
     @CurrentUser('id') currentUserId: UUID,
     @Param('id', ParseUUIDPipe) fileId: UUID,
@@ -80,6 +96,7 @@ export class FilesController {
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(CacheInterceptor)
   @UseGuards(AccessTokenAuthGuardFromCookies)
+  @ApiFilesSystemsGetFindFolderById()
   async findFolderById(
     @CurrentUser('id') currentUserId: UUID,
     @Param('id', ParseUUIDPipe) folderId: UUID,
@@ -93,6 +110,7 @@ export class FilesController {
   @Get('findPublicFiles')
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(CacheInterceptor)
+  @ApiFilesSystemGetFindPublicFiles()
   async findPublicFiles(
     @Query() condition: { condition: string },
     @Query() { offset, limit }: PaginationParams,
@@ -123,6 +141,7 @@ export class FilesController {
     cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/'],
   })
   @UseInterceptors(CacheInterceptor)
+  @ApiFilesSystemPostCreateFile()
   async createFile(
     @CurrentUser('id') currentUserId: UUID,
     @Req() request: FastifyRequest,
@@ -138,6 +157,7 @@ export class FilesController {
     cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/'],
   })
   @UseInterceptors(CacheInterceptor)
+  @ApiFilesSystemPostCreateFolder()
   async createFolder(
     @CurrentUser('id') currentUserId: UUID,
     @Body() createFolderDto: CreateFolderDto,
@@ -156,10 +176,11 @@ export class FilesController {
     cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/'],
   })
   @UseInterceptors(CacheInterceptor)
+  @ApiFilesSystemPatchCreateFilePermissions()
   async createFilePermissions(
     @CurrentUser('id') currentUserId: UUID,
     @Body() createFilePermissionsDto: CreateFilePermissionsDto,
-  ) {
+  ): Promise<File> {
     return await this.filesSystemService.createFilePermissions(
       currentUserId,
       createFilePermissionsDto,
@@ -174,10 +195,11 @@ export class FilesController {
     cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/'],
   })
   @UseInterceptors(CacheInterceptor)
+  @ApiFilesSystemPatchDeleteFilePermissions()
   async deleteFilePermissions(
     @CurrentUser('id') currentUserId: UUID,
     @Body() fileId: { fileId: UUID },
-  ) {
+  ): Promise<File> {
     return await this.filesSystemService.deleteFilePermissions(
       currentUserId,
       fileId.fileId,
@@ -192,6 +214,7 @@ export class FilesController {
     cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/'],
   })
   @UseInterceptors(CacheInterceptor)
+  @ApiFilesSystemPatchUpdateFile()
   async updateFile(
     @CurrentUser('id') currentUserId: UUID,
     @Body() updateFileDto: UpdateFileDto,
@@ -210,6 +233,7 @@ export class FilesController {
     cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/'],
   })
   @UseInterceptors(CacheInterceptor)
+  @ApiFilesSystemPatchUpdateFolder()
   async updateFolder(
     @CurrentUser('id') currentUserId: UUID,
     @Body() updateFolderDto: UpdateFolderDto,
@@ -228,6 +252,7 @@ export class FilesController {
     cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/'],
   })
   @UseInterceptors(CacheInterceptor)
+  @ApiFilesSystemDeleteDeleteFile()
   async deleteFile(
     @CurrentUser('id') currentUserId: UUID,
     @Body() { fileId }: { fileId: UUID },
@@ -243,6 +268,7 @@ export class FilesController {
     cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/'],
   })
   @UseInterceptors(CacheInterceptor)
+  @ApiFilesSystemDeleteDeleteFolder()
   async deleteFolder(
     @CurrentUser('id') currentUserId: UUID,
     @Body() { folderId }: { folderId: UUID },

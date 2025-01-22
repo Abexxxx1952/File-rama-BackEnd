@@ -392,7 +392,7 @@ export class FilesSystemService {
   async createFilePermissions(
     currentUserId: UUID,
     createFilePermissionsDto: CreateFilePermissionsDto,
-  ) {
+  ): Promise<File> {
     try {
       const fileWithRelations =
         await this.filesRepository.findOneByConditionWithRelations<FileWithRelatedEntity>(
@@ -429,7 +429,10 @@ export class FilesSystemService {
     }
   }
 
-  async deleteFilePermissions(currentUserId: UUID, fileId: UUID) {
+  async deleteFilePermissions(
+    currentUserId: UUID,
+    fileId: UUID,
+  ): Promise<File> {
     const fileWithRelations =
       await this.filesRepository.findOneByConditionWithRelations<FileWithRelatedEntity>(
         {

@@ -1,7 +1,7 @@
 import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
 import { UUID } from 'crypto';
 
-enum UpdateRole {
+export enum UpdateRole {
   READER = 'reader',
   Writer = 'writer',
 }

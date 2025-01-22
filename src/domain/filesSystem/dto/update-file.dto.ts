@@ -1,4 +1,5 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { UUID } from 'crypto';
 
 export class UpdateFileDto {
   @IsOptional()
@@ -12,9 +13,9 @@ export class UpdateFileDto {
   readonly fileExtension?: string;
 
   @IsOptional()
-  @IsString()
+  @IsUUID()
   @IsNotEmpty()
-  readonly parentFolderId?: string;
+  readonly parentFolderId?: UUID;
 
   @IsOptional()
   @IsString()
