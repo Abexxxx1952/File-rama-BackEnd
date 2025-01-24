@@ -132,22 +132,23 @@ export abstract class BaseAbstractRepository<
       let query = this.database
         .select()
         .from(this.table)
-        .where(eq(this.table.id, id))
-        .limit(1)
-        .$dynamic();
+        .where(eq(this.table.id, id));
 
       joins.forEach((join) => {
-        query.leftJoin(join.tableName, eq(join.ownField, join.relationField));
+        query.leftJoin(join.table, eq(join.relationField, join.ownField));
       });
 
       const result = await query;
+
       if (!result || result.length === 0) {
         throw new NotFoundException(
           `${this.entityName} with ID ${id} not found`,
         );
       }
 
-      return result[0] as K;
+      const aggregatedResult = this.aggregateResults(result);
+
+      return aggregatedResult as K;
     } catch (error) {
       if (error instanceof NotFoundException) {
         throw error;
@@ -226,12 +227,9 @@ export abstract class BaseAbstractRepository<
       let query = this.database
         .select()
         .from(this.table)
-        .where(and(...conditions))
-        .limit(1)
-        .$dynamic();
-
+        .where(and(...conditions));
       joins.forEach((join) => {
-        query.leftJoin(join.tableName, eq(join.ownField, join.relationField));
+        query.leftJoin(join.table, eq(join.ownField, join.relationField));
       });
 
       const result = await query;
@@ -239,7 +237,9 @@ export abstract class BaseAbstractRepository<
         throw new NotFoundException(`${this.entityName} not found`);
       }
 
-      return result[0] as K;
+      const aggregatedResult = this.aggregateResults(result);
+
+      return aggregatedResult as K;
     } catch (error) {
       if (
         error instanceof NotFoundException ||
@@ -525,5 +525,28 @@ export abstract class BaseAbstractRepository<
     }
 
     return validatedObject;
+  }
+
+  private aggregateResults(results: any[]): Record<string, any[]> {
+    const aggregated: Record<string, any[]> = {};
+    const uniqueIds: Record<string, Set<string>> = {};
+
+    results.forEach((result) => {
+      Object.keys(result).forEach((key) => {
+        const entity = result[key];
+
+        if (!aggregated[key]) {
+          aggregated[key] = [];
+          uniqueIds[key] = new Set<string>();
+        }
+
+        if (!uniqueIds[key].has(entity.id)) {
+          aggregated[key].push(entity);
+          uniqueIds[key].add(entity.id);
+        }
+      });
+    });
+
+    return aggregated;
   }
 }

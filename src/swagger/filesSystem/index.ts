@@ -230,6 +230,14 @@ export function ApiFilesSystemGetFindPublicFiles() {
       description: 'Bad Request',
     })(target, propertyKey, descriptor);
     ApiResponse({
+      status: 400,
+      description: 'Invalid JSON format',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 400,
+      description: 'Validation failed: ',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
       status: 401,
       description: 'Unauthorized',
     })(target, propertyKey, descriptor);

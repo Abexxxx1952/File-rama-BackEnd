@@ -11,7 +11,7 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 import { filesSchema } from 'src/domain/filesSystem/schema/files.schema';
-import { fileStatsSchema } from 'src/domain/stats/schema/stats.schema';
+import { statsSchema } from 'src/domain/stats/schema/stats.schema';
 import { foldersSchema } from '@/domain/filesSystem/schema/folder.schema';
 import { RegistrationSources } from '../auth/types/providers-oauth.enum';
 import { UsersPermissions } from '../permissions/users-permissions';
@@ -62,9 +62,9 @@ export const usersSchema = pgTable(
 );
 
 export const usersRelations = relations(usersSchema, ({ one, many }) => ({
-  fileStats: one(fileStatsSchema, {
+  stats: one(statsSchema, {
     fields: [usersSchema.id],
-    references: [fileStatsSchema.userId],
+    references: [statsSchema.userId],
   }),
   files: many(filesSchema),
   folders: many(foldersSchema),

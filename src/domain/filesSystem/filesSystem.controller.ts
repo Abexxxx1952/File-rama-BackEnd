@@ -49,6 +49,7 @@ import { UpdateFileDto } from './dto/update-file.dto';
 import { UpdateFolderDto } from './dto/update-folder.dto';
 import { FilesSystemService } from './filesSystem.service';
 import { FilesRepository } from './repository/files.repository';
+import { FoldersRepository } from './repository/folders.repository';
 import { File } from './types/file';
 import { FileUploadResult } from './types/file-upload-result';
 import { Folder } from './types/folder';
@@ -60,6 +61,8 @@ export class FilesController {
     private readonly filesSystemService: FilesSystemService,
     @Inject('FilesRepository')
     private readonly filesRepository: FilesRepository,
+    @Inject('FoldersRepository')
+    private readonly foldersRepository: FoldersRepository,
   ) {}
 
   @Get()
@@ -89,7 +92,10 @@ export class FilesController {
     @CurrentUser('id') currentUserId: UUID,
     @Param('id', ParseUUIDPipe) fileId: UUID,
   ): Promise<File> {
-    return await this.filesSystemService.findFileById(currentUserId, fileId);
+    return await this.filesRepository.findOneByCondition({
+      userId: currentUserId,
+      id: fileId,
+    });
   }
 
   @Get('findFolderById/:id')
@@ -101,10 +107,10 @@ export class FilesController {
     @CurrentUser('id') currentUserId: UUID,
     @Param('id', ParseUUIDPipe) folderId: UUID,
   ): Promise<Folder> {
-    return await this.filesSystemService.findFolderById(
-      currentUserId,
-      folderId,
-    );
+    return await this.foldersRepository.findOneByCondition({
+      userId: currentUserId,
+      id: folderId,
+    });
   }
 
   @Get('findPublicFiles')
@@ -138,7 +144,11 @@ export class FilesController {
   @UseGuards(AccessTokenAuthGuardFromCookies)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/'],
+    cacheKey: [
+      '/api/v1/filesSystem/',
+      '/api/v1/users/findWithRelations/',
+      '/api/v1/stats/',
+    ],
   })
   @UseInterceptors(CacheInterceptor)
   @ApiFilesSystemPostCreateFile()
@@ -154,7 +164,11 @@ export class FilesController {
   @UseGuards(AccessTokenAuthGuardFromCookies)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/'],
+    cacheKey: [
+      '/api/v1/filesSystem/',
+      '/api/v1/users/findWithRelations/',
+      '/api/v1/stats/',
+    ],
   })
   @UseInterceptors(CacheInterceptor)
   @ApiFilesSystemPostCreateFolder()
@@ -173,7 +187,7 @@ export class FilesController {
   @UseGuards(AccessTokenAuthGuardFromCookies)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/'],
+    cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/findWithRelations/'],
   })
   @UseInterceptors(CacheInterceptor)
   @ApiFilesSystemPatchCreateFilePermissions()
@@ -192,7 +206,7 @@ export class FilesController {
   @UseGuards(AccessTokenAuthGuardFromCookies)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/'],
+    cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/findWithRelations/'],
   })
   @UseInterceptors(CacheInterceptor)
   @ApiFilesSystemPatchDeleteFilePermissions()
@@ -211,7 +225,7 @@ export class FilesController {
   @HttpCode(HttpStatus.OK)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/'],
+    cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/findWithRelations/'],
   })
   @UseInterceptors(CacheInterceptor)
   @ApiFilesSystemPatchUpdateFile()
@@ -219,10 +233,7 @@ export class FilesController {
     @CurrentUser('id') currentUserId: UUID,
     @Body() updateFileDto: UpdateFileDto,
   ): Promise<File> {
-    return await this.filesSystemService.updateFileById(
-      currentUserId,
-      updateFileDto,
-    );
+    return await this.filesRepository.updateFile(currentUserId, updateFileDto);
   }
 
   @Patch('updateFolder')
@@ -230,7 +241,7 @@ export class FilesController {
   @HttpCode(HttpStatus.OK)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/'],
+    cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/findWithRelations/'],
   })
   @UseInterceptors(CacheInterceptor)
   @ApiFilesSystemPatchUpdateFolder()
@@ -238,7 +249,7 @@ export class FilesController {
     @CurrentUser('id') currentUserId: UUID,
     @Body() updateFolderDto: UpdateFolderDto,
   ): Promise<Folder> {
-    return await this.filesSystemService.updateFolderById(
+    return await this.foldersRepository.updateFolder(
       currentUserId,
       updateFolderDto,
     );
@@ -249,7 +260,11 @@ export class FilesController {
   @HttpCode(HttpStatus.OK)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/'],
+    cacheKey: [
+      '/api/v1/filesSystem/',
+      '/api/v1/users/findWithRelations/',
+      '/api/v1/stats/',
+    ],
   })
   @UseInterceptors(CacheInterceptor)
   @ApiFilesSystemDeleteDeleteFile()
@@ -265,7 +280,11 @@ export class FilesController {
   @HttpCode(HttpStatus.OK)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/'],
+    cacheKey: [
+      '/api/v1/filesSystem/',
+      '/api/v1/users/findWithRelations/',
+      '/api/v1/stats/',
+    ],
   })
   @UseInterceptors(CacheInterceptor)
   @ApiFilesSystemDeleteDeleteFolder()
@@ -273,7 +292,7 @@ export class FilesController {
     @CurrentUser('id') currentUserId: UUID,
     @Body() { folderId }: { folderId: UUID },
   ): Promise<Folder> {
-    return await this.filesSystemService.deleteFolder(currentUserId, folderId);
+    return await this.foldersRepository.deleteFolder(currentUserId, folderId);
   }
 
   @Sse('uploadProgress')

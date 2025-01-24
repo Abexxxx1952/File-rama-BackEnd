@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { SchemaObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
+import { UUID } from 'crypto';
 import { File } from '@/domain/filesSystem/types/file';
 
 export class FileModel implements File {
@@ -7,13 +8,13 @@ export class FileModel implements File {
     description: 'Unique identifier for the file',
     format: 'uuid',
   })
-  id: string;
+  id: UUID;
 
   @ApiProperty({
     description: 'Identifier of the user who owns the file',
     format: 'uuid',
   })
-  userId: string;
+  userId: UUID;
 
   @ApiProperty({ description: 'URL of the file' })
   fileUrl: string;
@@ -34,7 +35,7 @@ export class FileModel implements File {
     description: 'Parent folder ID, if applicable',
     format: 'uuid',
   })
-  parentFolderId: string;
+  parentFolderId: UUID;
 
   @ApiProperty({ description: 'Google Drive ID of the file' })
   fileGoogleDriveId: string;

@@ -54,6 +54,10 @@ export class CacheInterceptor implements NestInterceptor {
     if (fromReflector) {
       this.cacheOption = fromReflector;
     }
+
+    const request = context.switchToHttp().getRequest();
+    const userId = request.user?.id;
+
     if (this.cacheOption.cache === CacheOptions.InvalidateAllCache) {
       return next.handle().pipe(
         tap({
@@ -70,9 +74,25 @@ export class CacheInterceptor implements NestInterceptor {
       return next.handle().pipe(
         tap({
           next: async () => {
+            if (userId) {
+              await this.invalidateCacheStartingWith(
+                this.cacheOption.cacheKey,
+                userId,
+              );
+              await this.invalidateCacheStartingWith(this.cacheOption.cacheKey);
+            }
+
             await this.invalidateCacheStartingWith(this.cacheOption.cacheKey);
           },
           error: async () => {
+            if (userId) {
+              await this.invalidateCacheStartingWith(
+                this.cacheOption.cacheKey,
+                userId,
+              );
+              await this.invalidateCacheStartingWith(this.cacheOption.cacheKey);
+            }
+
             await this.invalidateCacheStartingWith(this.cacheOption.cacheKey);
           },
         }),
@@ -83,7 +103,7 @@ export class CacheInterceptor implements NestInterceptor {
       this.cacheOption.cache === true
     ) {
       const request = context.switchToHttp().getRequest();
-      const cacheKey = this.getCacheKey(request);
+      const cacheKey = this.getCacheKey(request, userId);
 
       return new Observable((observer) => {
         this.cacheManager
@@ -117,8 +137,12 @@ export class CacheInterceptor implements NestInterceptor {
     }
   }
 
-  private getCacheKey(request: any): string {
+  private getCacheKey(request: any, userId?: string): string {
     let cacheKey = request.path;
+
+    if (userId) {
+      cacheKey += `_user_${userId}`;
+    }
 
     const query = JSON.stringify(request.query);
     const body = JSON.stringify(request.body);
@@ -132,12 +156,14 @@ export class CacheInterceptor implements NestInterceptor {
   }
   private async invalidateCacheStartingWith(
     paths: string[] = [],
+    userId?: string,
   ): Promise<void> {
     const keys = await this.cacheManager.store.keys();
 
     for (const key of keys) {
       for (const path of paths) {
-        if (key.startsWith(path)) {
+        const specificPath = userId ? `${path}_user_${userId}` : path;
+        if (key.startsWith(specificPath)) {
           await this.cacheManager.del(key);
         }
       }

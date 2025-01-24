@@ -1,12 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { UUID } from 'crypto';
 import { FindFilesByConditionsDto } from '@/domain/filesSystem/dto/find-public-file-by-conditions.dto';
 
 export class FindFileByConditionsArgs implements FindFilesByConditionsDto {
   @ApiPropertyOptional({ type: 'string', format: 'UUID' })
-  readonly id?: string;
+  readonly id?: UUID;
 
   @ApiPropertyOptional({ type: 'string', format: 'UUID' })
-  readonly userId?: string;
+  readonly userId?: UUID;
 
   @ApiPropertyOptional()
   readonly fileUrl?: string;
@@ -24,7 +25,7 @@ export class FindFileByConditionsArgs implements FindFilesByConditionsDto {
   readonly fileSize?: string;
 
   @ApiPropertyOptional({ type: 'string', format: 'UUID' })
-  readonly parentFolderId?: string;
+  readonly parentFolderId?: UUID;
 
   @ApiPropertyOptional()
   readonly fileGoogleDriveId: string;

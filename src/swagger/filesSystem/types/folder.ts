@@ -1,17 +1,17 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { SchemaObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
+import { UUID } from 'crypto';
 import { Folder } from '@/domain/filesSystem/types/folder';
-import { FileModel } from './file';
 
 export class FolderModel implements Folder {
   @ApiProperty({ type: 'string', format: 'UUID' })
-  id: string;
+  id: UUID;
   @ApiProperty()
   folderName: string;
   @ApiProperty({ type: 'string', format: 'UUID' })
-  userId: string;
+  userId: UUID;
   @ApiProperty({ type: 'string', format: 'UUID' })
-  parentFolderId: string;
+  parentFolderId: UUID;
 }
 
 export const folderSchema: SchemaObject = {

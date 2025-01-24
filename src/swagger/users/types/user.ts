@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { UUID } from 'crypto';
 import { GoogleServiceAccounts } from '@/domain/users/types/google-service-accounts';
 import { RegistrationSources } from '../../../domain/users/auth/types/providers-oauth.enum';
 import { UsersPermissionsKeys } from '../../../domain/users/permissions/users-permissions';
@@ -9,7 +10,7 @@ import { PayloadModel } from './payload';
 
 export class UserModel implements User {
   @ApiProperty({ type: 'string', format: 'UUID' })
-  id: string;
+  id: UUID;
 
   @ApiPropertyOptional()
   name?: string;
@@ -49,7 +50,7 @@ export class UserModel implements User {
 
 export class UserPoorModel implements User {
   @ApiProperty({ type: 'string', format: 'UUID' })
-  id: string;
+  id: UUID;
 
   @ApiPropertyOptional()
   name?: string;

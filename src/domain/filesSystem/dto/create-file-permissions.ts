@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsString, IsUUID } from 'class-validator';
 import { UUID } from 'crypto';
 
 export enum UpdateRole {
@@ -7,7 +7,7 @@ export enum UpdateRole {
 }
 
 export class CreateFilePermissionsDto {
-  @IsString()
+  @IsUUID()
   @IsNotEmpty()
   readonly fileId: UUID;
 

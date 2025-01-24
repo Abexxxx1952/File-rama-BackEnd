@@ -1,8 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { UUID } from 'crypto';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { BaseAbstractRepository } from '@/database/abstractRepository/base.abstract.repository';
 import { DATABASE_CONNECTION } from '@/database/database.module';
 import { usersSchema } from '@/domain/users/schema/users.schema';
+import { UpdateFileDto } from '../dto/update-file.dto';
 import { filesSchema } from '../schema/files.schema';
 import { foldersSchema } from '../schema/folder.schema';
 import { File } from '../types/file';
@@ -21,15 +23,28 @@ export class FilesRepository extends BaseAbstractRepository<
     super(database, filesSchema, 'File');
     this.relatedTables = {
       user: {
-        tableName: usersSchema,
-        ownField: filesSchema.userId,
-        relationField: usersSchema.id,
+        table: usersSchema,
+        ownField: usersSchema.id,
+        relationField: filesSchema.userId,
       },
       parentFolder: {
-        tableName: foldersSchema,
-        ownField: filesSchema.parentFolderId,
-        relationField: foldersSchema.id,
+        table: foldersSchema,
+        ownField: foldersSchema.id,
+        relationField: filesSchema.parentFolderId,
       },
     };
+  }
+
+  async updateFile(
+    currentUserId: UUID,
+    updateFileDto: UpdateFileDto,
+  ): Promise<File> {
+    const { fileId, ...rest } = updateFileDto;
+    try {
+      await this.findOneByCondition({ id: fileId, userId: currentUserId });
+      return await this.updateById(fileId, rest);
+    } catch (error) {
+      throw error;
+    }
   }
 }

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { DatabaseModule } from '../../database/database.module';
+import { StatsModule } from '../stats/stats.module';
 import { UsersModule } from '../users/users.module';
 import { FilesController } from './filesSystem.controller';
 import { FilesSystemService } from './filesSystem.service';
@@ -9,7 +10,7 @@ import { FilesRepository } from './repository/files.repository';
 import { FoldersRepository } from './repository/folders.repository';
 
 @Module({
-  imports: [DatabaseModule, ConfigModule, UsersModule, JwtModule],
+  imports: [DatabaseModule, ConfigModule, UsersModule, JwtModule, StatsModule],
   controllers: [FilesController],
   providers: [
     FilesSystemService,
@@ -22,6 +23,6 @@ import { FoldersRepository } from './repository/folders.repository';
       useClass: FoldersRepository,
     },
   ],
-  exports: [],
+  exports: [FilesSystemService],
 })
 export class FilesSystemModule {}

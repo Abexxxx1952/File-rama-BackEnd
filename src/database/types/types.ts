@@ -11,7 +11,7 @@ export type TableWithId<Schema extends PgTable<TableConfig>> = Schema & {
 };
 
 type RelatedTable = {
-  tableName: PgTable<TableConfig>;
+  table: PgTable<TableConfig>;
   ownField: PgColumn<ColumnBaseConfig<ColumnDataType, string>, object, object>;
   relationField: PgColumn<
     ColumnBaseConfig<ColumnDataType, string>,

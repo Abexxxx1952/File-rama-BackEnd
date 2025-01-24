@@ -152,7 +152,18 @@ export function ApiUsersGetFindOneBy() {
       description: 'Got the user',
       type: UserPoorModel,
     })(target, propertyKey, descriptor);
-
+    ApiResponse({
+      status: 400,
+      description: 'Bad Request',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 400,
+      description: 'Invalid JSON format',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 400,
+      description: 'Validation failed: ',
+    })(target, propertyKey, descriptor);
     ApiResponse({
       status: 404,
       description: 'User not found',
@@ -186,6 +197,14 @@ export function ApiUsersGetFindManyBy() {
       status: 200,
       description: 'Got all user by condition',
       type: [UserPoorModel],
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 400,
+      description: 'Invalid JSON format',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 400,
+      description: 'Validation failed: ',
     })(target, propertyKey, descriptor);
     ApiResponse({
       status: 404,

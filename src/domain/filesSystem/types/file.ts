@@ -1,4 +1,5 @@
 import { Exclude } from 'class-transformer';
+import { UUID } from 'crypto';
 import { InferSelectModel } from 'drizzle-orm';
 import { MakeOptional } from '@/database/types/make-optional';
 import { filesSchema } from '../schema/files.schema';

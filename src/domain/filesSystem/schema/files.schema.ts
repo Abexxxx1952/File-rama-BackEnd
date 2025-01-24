@@ -15,7 +15,9 @@ export const filesSchema = pgTable(
   'files',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id').references(() => usersSchema.id),
+    userId: uuid('user_id').references(() => usersSchema.id, {
+      onDelete: 'cascade',
+    }),
     fileUrl: text('file_url').notNull(),
     fileDownloadUrl: text('file_download_url').notNull(),
     fileName: text('file_name').notNull(),

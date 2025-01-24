@@ -7,12 +7,13 @@ import {
   IsString,
   IsUUID,
 } from 'class-validator';
+import { UUID } from 'crypto';
 
 export class FindUsersByConditionsDto {
   @IsOptional()
   @IsUUID()
   @IsNotEmpty()
-  readonly id?: string;
+  readonly id?: UUID;
 
   @IsOptional()
   @IsString()

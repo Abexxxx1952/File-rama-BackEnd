@@ -6,17 +6,18 @@ import {
   IsString,
   IsUUID,
 } from 'class-validator';
+import { UUID } from 'crypto';
 
 export class FindFilesByConditionsDto {
   @IsOptional()
   @IsUUID()
   @IsNotEmpty()
-  readonly id?: string;
+  readonly id?: UUID;
 
   @IsOptional()
   @IsUUID()
   @IsNotEmpty()
-  readonly userId?: string;
+  readonly userId?: UUID;
 
   @IsOptional()
   @IsString()
@@ -44,9 +45,9 @@ export class FindFilesByConditionsDto {
   readonly fileSize?: string;
 
   @IsOptional()
-  @IsString()
+  @IsUUID()
   @IsNotEmpty()
-  readonly parentFolderId?: string;
+  readonly parentFolderId?: UUID;
 
   @IsOptional()
   @IsString()

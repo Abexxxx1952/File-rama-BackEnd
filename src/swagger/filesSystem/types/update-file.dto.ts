@@ -3,6 +3,9 @@ import { UUID } from 'crypto';
 import { UpdateFileDto } from '@/domain/filesSystem/dto/update-file.dto';
 
 export class UpdateFileArgs implements UpdateFileDto {
+  @ApiProperty()
+  readonly fileId: UUID;
+
   @ApiPropertyOptional()
   readonly fileName?: string;
 

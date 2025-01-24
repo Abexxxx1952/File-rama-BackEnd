@@ -1,4 +1,5 @@
 import { Exclude } from 'class-transformer';
+import { UUID } from 'crypto';
 import { InferSelectModel } from 'drizzle-orm';
 import { MakeOptional } from '@/database/types/make-optional';
 import { RegistrationSources } from '../auth/types/providers-oauth.enum';
@@ -15,7 +16,7 @@ type UserWithOptionalFields = MakeOptional<
 >;
 
 export class User implements UserWithOptionalFields {
-  id: string;
+  id: UUID;
 
   name?: string;
 
@@ -44,7 +45,7 @@ export class User implements UserWithOptionalFields {
 }
 
 export class UserPoor implements UserWithOptionalFields {
-  id: string;
+  id: UUID;
 
   name?: string;
 

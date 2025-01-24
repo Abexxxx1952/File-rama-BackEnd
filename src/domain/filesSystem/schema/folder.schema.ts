@@ -8,7 +8,9 @@ export const foldersSchema = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     folderName: text('name').notNull(),
-    userId: uuid('user_id').references(() => usersSchema.id),
+    userId: uuid('user_id').references(() => usersSchema.id, {
+      onDelete: 'cascade',
+    }),
     parentFolderId: uuid('parent_folder_id').references(() => foldersSchema.id),
   },
   (table) => {

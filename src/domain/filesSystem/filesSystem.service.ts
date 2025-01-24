@@ -12,13 +12,13 @@ import { drive_v3, google } from 'googleapis';
 import { Observable } from 'rxjs';
 import { pipeline } from 'stream';
 import { promisify } from 'util';
+import { StatsRepository } from '../stats/repository/stats.repository';
 import { UsersRepository } from '../users/repository/users.repository';
+import { UserWithRelatedEntity } from '../users/types/user-with-related-entity';
 import { User } from '../users/types/users';
 import { CreateFilePermissionsDto } from './dto/create-file-permissions';
 import { CreateFolderDto } from './dto/create-folder.dto';
 import { GoogleAuthDto } from './dto/google-auth.dto';
-import { UpdateFileDto } from './dto/update-file.dto';
-import { UpdateFolderDto } from './dto/update-folder.dto';
 import { FilesRepository } from './repository/files.repository';
 import { FoldersRepository } from './repository/folders.repository';
 import { File } from './types/file';
@@ -39,6 +39,8 @@ export class FilesSystemService {
     private readonly filesRepository: FilesRepository,
     @Inject('FoldersRepository')
     private readonly foldersRepository: FoldersRepository,
+    @Inject('StatsRepository')
+    private readonly statsRepository: StatsRepository,
   ) {}
 
   async createFile(
@@ -52,15 +54,22 @@ export class FilesSystemService {
     let parentFolderId: string | null = null;
     let parentFolderGoogleDriveId: string | null = null;
     const uploadResults: FileUploadResult[] = [];
+    let userWithRelatedEntity: UserWithRelatedEntity;
     let user: User;
     let fileLoaded = false;
     let hasMoreFiles = false;
 
     try {
-      user = await this.usersRepository.findById(currentUserId);
+      userWithRelatedEntity =
+        await this.usersRepository.findByIdWithRelations<UserWithRelatedEntity>(
+          currentUserId,
+          ['stats'],
+        );
     } catch (error) {
       throw error;
     }
+
+    user = userWithRelatedEntity.users[0];
 
     try {
       for (const account of user.googleServiceAccounts) {
@@ -195,6 +204,11 @@ export class FilesSystemService {
                 isPublic: parentFolderGoogleDriveId ? true : false,
               });
 
+              await this.statsRepository.updateByCondition(
+                { userId: user.id },
+                { fileCount: userWithRelatedEntity.stats[0].fileCount + 1 },
+              );
+
               uploadResults.push({
                 file,
                 status: StatusUpload.COMPLETE,
@@ -230,11 +244,9 @@ export class FilesSystemService {
   }
 
   async createFolder(
-    currentUserId: UUID,
+    userId: UUID,
     createfolderDto: CreateFolderDto,
   ): Promise<Folder> {
-    let user: User;
-
     try {
       const folderName = await this.handleNameConflict(
         'folder',
@@ -244,9 +256,18 @@ export class FilesSystemService {
 
       const folder = await this.foldersRepository.create({
         folderName,
-        userId: currentUserId,
+        userId: userId,
         parentFolderId: createfolderDto.parentFolderId,
       });
+
+      const userStats = await this.statsRepository.findAllByCondition({
+        userId,
+      });
+      await this.statsRepository.updateByCondition(
+        { userId },
+        { folderCount: userStats[0].folderCount + 1 },
+      );
+
       return folder;
     } catch (error) {
       throw error;
@@ -290,73 +311,21 @@ export class FilesSystemService {
     return foldersAndFiles.slice(start, end);
   }
 
-  async findFileById(currentUserId: UUID, fileId: UUID): Promise<File> {
-    try {
-      const files = await this.filesRepository.findOneByCondition({
-        userId: currentUserId,
-        id: fileId,
-      });
-      return files;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async findFolderById(currentUserId: UUID, folderId: UUID): Promise<Folder> {
-    try {
-      const folders = await this.foldersRepository.findOneByCondition({
-        userId: currentUserId,
-        id: folderId,
-      });
-      return folders;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async updateFileById(
-    currentUserId: UUID,
-    updateFileDto: UpdateFileDto,
-  ): Promise<File> {
-    try {
-      const file = await this.filesRepository.updateById(
-        currentUserId,
-        updateFileDto,
-      );
-      return file;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async updateFolderById(
-    currentUserId: UUID,
-    updateFolderDto: UpdateFolderDto,
-  ): Promise<Folder> {
-    try {
-      const folder = await this.foldersRepository.updateById(
-        currentUserId,
-        updateFolderDto,
-      );
-      return folder;
-    } catch (error) {
-      throw error;
-    }
-  }
-
   async deleteFile(currentUserId: UUID, fileId: string): Promise<File> {
     try {
-      const fileWithRelations =
-        await this.filesRepository.findOneByConditionWithRelations<FileWithRelatedEntity>(
-          {
-            userId: currentUserId,
-            id: fileId,
-          },
-          ['user'],
+      const file = await this.filesRepository.findOneByCondition({
+        id: fileId,
+        userId: currentUserId,
+      });
+
+      const userWithRelatedEntity =
+        await this.usersRepository.findOneByConditionWithRelations<UserWithRelatedEntity>(
+          { id: currentUserId },
+          ['stats'],
         );
 
-      const file = fileWithRelations.files;
-      const user = fileWithRelations.users;
+      const user = userWithRelatedEntity.users[0];
+      const stats = userWithRelatedEntity.stats[0];
       const account = user.googleServiceAccounts.find((account) => {
         account.clientEmail === file.fileGoogleDriveClientEmail;
       });
@@ -369,21 +338,12 @@ export class FilesSystemService {
       });
 
       if (response.status === 204) {
+        await this.statsRepository.updateByCondition(
+          { userId: user.id },
+          { fileCount: stats.fileCount - 1 },
+        );
         return await this.filesRepository.deleteById(file.id);
       }
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async deleteFolder(currentUserId: UUID, folderId: UUID): Promise<Folder> {
-    try {
-      await this.foldersRepository.findOneByCondition({
-        userId: currentUserId,
-        id: folderId,
-      });
-
-      return await this.deleteFolderRecursively(currentUserId, folderId);
     } catch (error) {
       throw error;
     }
@@ -403,8 +363,8 @@ export class FilesSystemService {
           ['user'],
         );
 
-      const file = fileWithRelations.files;
-      const user = fileWithRelations.users;
+      const file = fileWithRelations.files[0];
+      const user = fileWithRelations.users[0];
 
       const account = user.googleServiceAccounts.find((account) => {
         return account.clientEmail === file.fileGoogleDriveClientEmail;
@@ -441,8 +401,8 @@ export class FilesSystemService {
         },
         ['user'],
       );
-    const file = fileWithRelations.files;
-    const user = fileWithRelations.users;
+    const file = fileWithRelations.files[0];
+    const user = fileWithRelations.users[0];
 
     const account = user.googleServiceAccounts.find((account) => {
       return account.clientEmail === file.fileGoogleDriveClientEmail;
@@ -494,7 +454,7 @@ export class FilesSystemService {
       });
     });
   }
-  private async authenticate(authDto: GoogleAuthDto) {
+  async authenticate(authDto: GoogleAuthDto): Promise<drive_v3.Drive> {
     const auth = new google.auth.GoogleAuth({
       credentials: {
         client_email: authDto.clientEmail,
@@ -504,8 +464,9 @@ export class FilesSystemService {
     });
 
     this.driveService = google.drive({ version: 'v3', auth });
+    return google.drive({ version: 'v3', auth });
   }
-  private async handleNameConflict(
+  async handleNameConflict(
     entity: 'file' | 'folder',
     parentFolderId: string | null,
     name: string,
@@ -589,35 +550,5 @@ export class FilesSystemService {
   }
   catch(error) {
     throw new Error(`Failed to handle file conflict: ${error.message}`);
-  }
-
-  private async deleteFolderRecursively(
-    currentUserId: UUID,
-    folderId: string,
-  ): Promise<Folder> {
-    try {
-      const files = await this.filesRepository.findAllByCondition({
-        userId: currentUserId,
-        parentFolderId: folderId,
-      });
-
-      for (const file of files) {
-        await this.filesRepository.deleteById(file.id);
-      }
-
-      const subFolders = await this.foldersRepository.findAllByCondition({
-        userId: currentUserId,
-        parentFolderId: folderId,
-      });
-
-      const folder = await this.foldersRepository.deleteById(folderId);
-
-      for (const subFolder of subFolders) {
-        await this.deleteFolderRecursively(currentUserId, subFolder.id);
-      }
-      return folder;
-    } catch (error) {
-      throw error;
-    }
   }
 }
