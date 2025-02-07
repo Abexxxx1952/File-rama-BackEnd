@@ -11,15 +11,10 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import { UUID } from 'crypto';
 import { CurrentUser } from '@/common/decorators/currentUser.decorator';
-import {
-  CacheOptionInvalidateCache,
-  CacheOptions,
-} from '@/common/interceptors/cache.interceptor';
-import { ApiStatsGet, ApiStatsGetDriveInfo } from '@/swagger/stats';
+import { ApiStatsGet } from '@/swagger/stats';
 import { AccessTokenAuthGuardFromCookies } from '../users/auth/guards/access-token-from-cookies.guard';
 import { StatsRepository } from './repository/stats.repository';
 import { StatsService } from './stats.service';
-import { DriveInfoResult } from './types/driveInfoResult';
 import { Stat } from './types/stat';
 
 @ApiTags('v1/stats')
@@ -36,23 +31,9 @@ export class StatsController {
   @UseInterceptors(CacheInterceptor)
   @ApiStatsGet()
   async getStats(@CurrentUser('id') currentUserId: UUID): Promise<Stat> {
+    await this.statsService.getGoogleDriveInfo(currentUserId);
     return await this.statsRepository.findOneByCondition({
       userId: currentUserId,
     });
-  }
-
-  @Get('/driveInfo')
-  @UseGuards(AccessTokenAuthGuardFromCookies)
-  @HttpCode(HttpStatus.OK)
-  @CacheOptionInvalidateCache({
-    cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/stats/', '/api/v1/users/findWithRelations/'],
-  })
-  @UseInterceptors(CacheInterceptor)
-  @ApiStatsGetDriveInfo()
-  async getDriveInfo(
-    @CurrentUser('id') currentUserId: UUID,
-  ): Promise<DriveInfoResult[]> {
-    return await this.statsService.getGoogleDriveInfo(currentUserId);
   }
 }

@@ -74,26 +74,16 @@ export class CacheInterceptor implements NestInterceptor {
       return next.handle().pipe(
         tap({
           next: async () => {
-            if (userId) {
-              await this.invalidateCacheStartingWith(
-                this.cacheOption.cacheKey,
-                userId,
-              );
-              await this.invalidateCacheStartingWith(this.cacheOption.cacheKey);
-            }
-
-            await this.invalidateCacheStartingWith(this.cacheOption.cacheKey);
+            await this.invalidateCacheStartingWith(
+              this.cacheOption.cacheKey,
+              userId,
+            );
           },
           error: async () => {
-            if (userId) {
-              await this.invalidateCacheStartingWith(
-                this.cacheOption.cacheKey,
-                userId,
-              );
-              await this.invalidateCacheStartingWith(this.cacheOption.cacheKey);
-            }
-
-            await this.invalidateCacheStartingWith(this.cacheOption.cacheKey);
+            await this.invalidateCacheStartingWith(
+              this.cacheOption.cacheKey,
+              userId,
+            );
           },
         }),
       );
@@ -159,10 +149,17 @@ export class CacheInterceptor implements NestInterceptor {
     userId?: string,
   ): Promise<void> {
     const keys = await this.cacheManager.store.keys();
-
+    let specificPath: string;
     for (const key of keys) {
       for (const path of paths) {
-        const specificPath = userId ? `${path}_user_${userId}` : path;
+        specificPath = path;
+        if (path.endsWith('*')) {
+          specificPath = path.slice(0, -1);
+        }
+        if (userId && !path.endsWith('*')) {
+          specificPath = `${path}_user_${userId}`;
+        }
+
         if (key.startsWith(specificPath)) {
           await this.cacheManager.del(key);
         }

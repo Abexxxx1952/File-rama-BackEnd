@@ -145,7 +145,7 @@ export class FilesController {
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
     cacheKey: [
-      '/api/v1/filesSystem/',
+      '/api/v1/filesSystem/*',
       '/api/v1/users/findWithRelations/',
       '/api/v1/stats/',
     ],
@@ -165,7 +165,7 @@ export class FilesController {
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
     cacheKey: [
-      '/api/v1/filesSystem/',
+      '/api/v1/filesSystem/*',
       '/api/v1/users/findWithRelations/',
       '/api/v1/stats/',
     ],
@@ -187,7 +187,7 @@ export class FilesController {
   @UseGuards(AccessTokenAuthGuardFromCookies)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/findWithRelations/'],
+    cacheKey: ['/api/v1/filesSystem/*', '/api/v1/users/findWithRelations/'],
   })
   @UseInterceptors(CacheInterceptor)
   @ApiFilesSystemPatchCreateFilePermissions()
@@ -206,7 +206,7 @@ export class FilesController {
   @UseGuards(AccessTokenAuthGuardFromCookies)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/findWithRelations/'],
+    cacheKey: ['/api/v1/filesSystem/*', '/api/v1/users/findWithRelations/'],
   })
   @UseInterceptors(CacheInterceptor)
   @ApiFilesSystemPatchDeleteFilePermissions()
@@ -225,7 +225,7 @@ export class FilesController {
   @HttpCode(HttpStatus.OK)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/findWithRelations/'],
+    cacheKey: ['/api/v1/filesSystem/*', '/api/v1/users/findWithRelations/'],
   })
   @UseInterceptors(CacheInterceptor)
   @ApiFilesSystemPatchUpdateFile()
@@ -241,7 +241,7 @@ export class FilesController {
   @HttpCode(HttpStatus.OK)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/filesSystem/', '/api/v1/users/findWithRelations/'],
+    cacheKey: ['/api/v1/filesSystem/*', '/api/v1/users/findWithRelations/'],
   })
   @UseInterceptors(CacheInterceptor)
   @ApiFilesSystemPatchUpdateFolder()
@@ -261,7 +261,7 @@ export class FilesController {
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
     cacheKey: [
-      '/api/v1/filesSystem/',
+      '/api/v1/filesSystem/*',
       '/api/v1/users/findWithRelations/',
       '/api/v1/stats/',
     ],
@@ -281,7 +281,7 @@ export class FilesController {
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
     cacheKey: [
-      '/api/v1/filesSystem/',
+      '/api/v1/filesSystem/*',
       '/api/v1/users/findWithRelations/',
       '/api/v1/stats/',
     ],

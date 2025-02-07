@@ -11,4 +11,6 @@ export class Folder implements FolderInferSelect {
   folderName: string;
   userId: string;
   parentFolderId: string;
+  createdDate: Date;
+  isPublic: boolean;
 }

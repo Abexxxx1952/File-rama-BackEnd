@@ -158,7 +158,7 @@ export class UsersController {
   @UseInterceptors(new TransformResultInterceptor(User))
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/users/', '/api/v1/stats'],
+    cacheKey: ['/api/v1/users/*', '/api/v1/stats'],
   })
   @UseInterceptors(CacheInterceptor)
   @ApiUsersPatchUpdate()
@@ -179,7 +179,7 @@ export class UsersController {
   @UseInterceptors(new TransformResultInterceptor(User))
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/users/', '/api/v1/stats'],
+    cacheKey: ['/api/v1/users/*', '/api/v1/stats'],
   })
   @UseInterceptors(CacheInterceptor)
   @ApiUsersPatchUpdateFromHeaders()
@@ -199,7 +199,7 @@ export class UsersController {
   @UseInterceptors(new TransformResultInterceptor(User))
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/users/'],
+    cacheKey: ['/api/v1/users/*'],
   })
   @UseInterceptors(CacheInterceptor)
   @ApiUsersDeleteDeleteUser()
@@ -213,7 +213,7 @@ export class UsersController {
   @UseInterceptors(new TransformResultInterceptor(User))
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/users/'],
+    cacheKey: ['/api/v1/users/*'],
   })
   @UseInterceptors(CacheInterceptor)
   @ApiUsersDeleteDeleteUserFromHeaders()

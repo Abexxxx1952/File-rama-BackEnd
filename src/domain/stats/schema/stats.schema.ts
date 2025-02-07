@@ -1,6 +1,7 @@
 import { relations } from 'drizzle-orm';
-import { index, integer, pgTable, uuid } from 'drizzle-orm/pg-core';
+import { index, integer, jsonb, pgTable, uuid } from 'drizzle-orm/pg-core';
 import { usersSchema } from 'src/domain/users/schema/users.schema';
+import { DriveInfoResult } from '../types/driveInfoResult';
 
 export const statsSchema = pgTable(
   'stats',
@@ -13,6 +14,10 @@ export const statsSchema = pgTable(
     folderCount: integer('file_count').notNull().default(0),
     totalSize: integer('total_size').notNull().default(0),
     usedSize: integer('used_size').notNull().default(0),
+    driveInfoResult: jsonb('drive_info_result')
+      .$type<DriveInfoResult[]>()
+      .notNull()
+      .default([]),
   },
   (table) => {
     return {

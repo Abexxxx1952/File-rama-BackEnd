@@ -41,8 +41,10 @@ export class FilesRepository extends BaseAbstractRepository<
   ): Promise<File> {
     const { fileId, ...rest } = updateFileDto;
     try {
-      await this.findOneByCondition({ id: fileId, userId: currentUserId });
-      return await this.updateById(fileId, rest);
+      return await this.updateByCondition(
+        { id: fileId, userId: currentUserId },
+        rest,
+      )[0];
     } catch (error) {
       throw error;
     }

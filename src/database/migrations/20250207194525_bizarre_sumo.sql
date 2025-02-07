@@ -1,0 +1,1 @@
+ALTER TABLE "stats" ADD COLUMN "drive_info_result" jsonb DEFAULT '[]'::jsonb NOT NULL;

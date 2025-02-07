@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { UUID } from 'crypto';
 import { Stat } from '@/domain/stats/types/stat';
+import { DriveInfoResultModel } from './driveInfoResult';
 
 export class StatModel implements Stat {
   @ApiProperty({ type: 'string', format: 'UUID' })
@@ -20,4 +21,6 @@ export class StatModel implements Stat {
 
   @ApiProperty()
   usedSize: number;
+
+  driveInfoResult: DriveInfoResultModel[];
 }

@@ -5,6 +5,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
+import { log } from 'console';
 import { UUID } from 'crypto';
 import { EventEmitter } from 'events';
 import { FastifyRequest } from 'fastify';
@@ -313,16 +314,19 @@ export class FilesSystemService {
 
   async deleteFile(currentUserId: UUID, fileId: string): Promise<File> {
     try {
-      const file = await this.filesRepository.findOneByCondition({
-        id: fileId,
-        userId: currentUserId,
-      });
-
       const userWithRelatedEntity =
         await this.usersRepository.findOneByConditionWithRelations<UserWithRelatedEntity>(
           { id: currentUserId },
-          ['stats'],
+          ['files', 'stats'],
         );
+
+      const file = userWithRelatedEntity.files.find(
+        (file) => file.id === fileId,
+      );
+
+      if (!file) {
+        throw new NotFoundException("File doesn't exist");
+      }
 
       const user = userWithRelatedEntity.users[0];
       const stats = userWithRelatedEntity.stats[0];

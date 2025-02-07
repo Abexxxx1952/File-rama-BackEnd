@@ -51,7 +51,7 @@ export class StatsService {
 
     await this.statsRepository.updateByCondition(
       { userId },
-      { totalSize, usedSize },
+      { totalSize, usedSize, driveInfoResult: result },
     );
 
     return result;

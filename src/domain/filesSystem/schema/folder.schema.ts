@@ -1,5 +1,13 @@
 import { relations } from 'drizzle-orm';
-import { index, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  index,
+  pgTable,
+  text,
+  timestamp,
+  unique,
+  uuid,
+} from 'drizzle-orm/pg-core';
 import { usersSchema } from '@/domain/users/schema/users.schema';
 import { filesSchema } from './files.schema';
 
@@ -12,6 +20,8 @@ export const foldersSchema = pgTable(
       onDelete: 'cascade',
     }),
     parentFolderId: uuid('parent_folder_id').references(() => foldersSchema.id),
+    createdDate: timestamp('upload_date').defaultNow().notNull(),
+    isPublic: boolean('is_public').default(false).notNull(),
   },
   (table) => {
     return {

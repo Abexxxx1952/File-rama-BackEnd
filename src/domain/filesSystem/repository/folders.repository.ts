@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { UUID } from 'crypto';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { BaseAbstractRepository } from '@/database/abstractRepository/base.abstract.repository';
@@ -39,8 +39,10 @@ export class FoldersRepository extends BaseAbstractRepository<
   ): Promise<Folder> {
     const { folderId, ...rest } = updateFolderDto;
     try {
-      await this.findOneByCondition({ id: folderId, userId: currentUserId });
-      return await this.updateById(folderId, rest);
+      return await this.updateByCondition(
+        { id: folderId, userId: currentUserId },
+        rest,
+      )[0];
     } catch (error) {
       throw error;
     }
@@ -48,20 +50,32 @@ export class FoldersRepository extends BaseAbstractRepository<
 
   async deleteFolder(currentUserId: UUID, folderId: UUID): Promise<Folder> {
     try {
-      await this.findOneByCondition({ id: folderId, userId: currentUserId });
+      const userWithRelatedEntity =
+        await this.usersRepository.findOneByConditionWithRelations<UserWithRelatedEntity>(
+          { id: currentUserId },
+          ['folders', 'stats'],
+        );
 
-      const userStat = await this.statsRepository.findOneByCondition({
-        userId: currentUserId,
-      });
+      const folder = userWithRelatedEntity.folders.find(
+        (folder) => folder.id === folderId,
+      );
+
+      if (!folder) {
+        throw new NotFoundException("Folder doesn't exist");
+      }
+
+      const userStat = userWithRelatedEntity.stats[0];
 
       const result = await this.deleteFolderRecursively(
         currentUserId,
         folderId,
       );
+
       await this.statsRepository.updateByCondition(
         { userId: currentUserId },
         { folderCount: userStat.folderCount - 1 },
       );
+
       return result;
     } catch (error) {
       throw error;
