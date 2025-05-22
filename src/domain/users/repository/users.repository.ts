@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Inject,
@@ -7,6 +8,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { plainToClass } from 'class-transformer';
+import { validateOrReject } from 'class-validator';
 import { UUID } from 'crypto';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { filesSchema } from '@/domain/filesSystem/schema/files.schema';
@@ -20,7 +23,13 @@ import { CreateUserLocalDto } from '../auth/dto/register-local.dto';
 import { EmailConfirmationService } from '../auth/email-confirmation/email-confirmation.service';
 import { ParseUserOAuth } from '../auth/types/parse-user-oauth';
 import { RegistrationSources } from '../auth/types/providers-oauth.enum';
+import {
+  GoogleServiceAccountsDto,
+  UpdateMode,
+} from '../dto/google-service-accounts';
+import { UpdateUserDto } from '../dto/update.dto';
 import { usersSchema } from '../schema/users.schema';
+import { GoogleServiceAccounts } from '../types/google-service-accounts';
 import { User } from '../types/users';
 
 @Injectable()
@@ -71,7 +80,9 @@ export class UsersRepository extends BaseAbstractRepository<
 
       if (user) {
         errorResponse.errors[this.uniqueProperty] = 'Has already been taken';
-        throw new ConflictException(errorResponse);
+        errorResponse.errors['message'] = 'Conflict error';
+        errorResponse.errors['statusCode'] = '409';
+        throw new ConflictException(errorResponse.errors);
       }
     } catch (error) {
       if (error instanceof ConflictException) {
@@ -137,10 +148,11 @@ export class UsersRepository extends BaseAbstractRepository<
     }
   }
 
-  public async updateUserById(id: string, data: Partial<User>): Promise<User> {
-    let dataUpdate: User;
+  public async updateUserById(id: string, data: UpdateUserDto): Promise<User> {
+    let dataUpdate: Partial<User> = {};
+    let existUser: User;
+
     if (data.password) {
-      let existUser: User;
       try {
         existUser = await this.findById(id);
         dataUpdate.password = await this.hashPassword(data.password);
@@ -158,13 +170,36 @@ export class UsersRepository extends BaseAbstractRepository<
         ];
       }
     }
-    dataUpdate = { ...data, ...dataUpdate, updatedAt: new Date() };
+    if (data.googleServiceAccounts) {
+      if (!existUser) {
+        try {
+          existUser = await this.findById(id);
+        } catch (error) {
+          if (error instanceof NotFoundException) {
+            throw new ForbiddenException('Access Denied');
+          }
+          throw error;
+        }
+      }
+      dataUpdate.googleServiceAccounts = this.updateUserGoogleServiceAccounts(
+        data.googleServiceAccounts,
+        existUser.googleServiceAccounts,
+      );
+    }
+
+    dataUpdate = {
+      ...(data as Partial<User>),
+      ...dataUpdate,
+      updatedAt: new Date(),
+    };
+
     try {
       const user = await this.updateById(id, dataUpdate);
 
       if (dataUpdate.googleServiceAccounts) {
         await this.updateStats(user.id, user.googleServiceAccounts);
       }
+
       return user;
     } catch (error) {
       throw error;
@@ -178,11 +213,7 @@ export class UsersRepository extends BaseAbstractRepository<
 
   private async createStats(
     id: UUID,
-    googleServiceAccounts: {
-      clientEmail: string;
-      privateKey: string;
-      rootFolderId: string;
-    }[],
+    googleServiceAccounts: GoogleServiceAccounts[],
   ): Promise<Stat> {
     const totalSize = googleServiceAccounts.length * 15 * 1024 * 1024 * 1024; // 15GB per account
 
@@ -194,16 +225,14 @@ export class UsersRepository extends BaseAbstractRepository<
       usedSize: 0,
     };
 
-    return await this.statsRepository.create(initialUserStats);
+    const result = await this.statsRepository.create(initialUserStats);
+
+    return result;
   }
 
   private async updateStats(
     id: UUID,
-    googleServiceAccounts: {
-      clientEmail: string;
-      privateKey: string;
-      rootFolderId: string;
-    }[],
+    googleServiceAccounts: GoogleServiceAccounts[],
   ): Promise<Stat> {
     const totalSize = googleServiceAccounts.length * 15 * 1024 * 1024 * 1024; // 15GB per account
 
@@ -213,5 +242,98 @@ export class UsersRepository extends BaseAbstractRepository<
     );
 
     return result[0];
+  }
+
+  private updateUserGoogleServiceAccounts(
+    googleServiceAccountsRequest: GoogleServiceAccountsDto[],
+    googleServiceAccountsExisting: GoogleServiceAccounts[],
+  ): GoogleServiceAccounts[] {
+    let googleServiceAccountsRequestCopy: GoogleServiceAccounts[] = [];
+    const googleServiceAccountsExistingCopy = [
+      ...googleServiceAccountsExisting,
+    ];
+    let deletionOffsetIndex = 0;
+    let updateAndDeleteCount = 0;
+    googleServiceAccountsRequest.forEach((reqAccount, reqAccountIndex) => {
+      if (
+        googleServiceAccountsExisting.length === 0 &&
+        reqAccount.updateMode === UpdateMode.CREATE
+      ) {
+        googleServiceAccountsRequestCopy.push({
+          clientEmail: reqAccount.clientEmail,
+          privateKey: reqAccount.privateKey,
+          rootFolderId: reqAccount.rootFolderId
+            ? reqAccount.rootFolderId
+            : undefined,
+        });
+        return;
+      }
+      if (
+        googleServiceAccountsExisting.length === 0 &&
+        (reqAccount.updateMode === UpdateMode.UPDATE || UpdateMode.DELETE)
+      ) {
+        throw new BadRequestException('Account does not exists');
+      }
+
+      if (reqAccount.updateMode === UpdateMode.CREATE) {
+        googleServiceAccountsRequestCopy[reqAccountIndex] = {
+          clientEmail: reqAccount.clientEmail,
+          privateKey: reqAccount.privateKey,
+          rootFolderId: reqAccount.rootFolderId
+            ? reqAccount.rootFolderId
+            : undefined,
+        };
+      }
+
+      if (
+        reqAccount.updateMode === UpdateMode.UPDATE ||
+        reqAccount.updateMode === UpdateMode.DELETE
+      ) {
+        updateAndDeleteCount++;
+      }
+
+      googleServiceAccountsExisting.forEach(
+        (existAccount, existAccountIndex) => {
+          if (existAccount.clientEmail === reqAccount.clientEmail) {
+            if (reqAccount.updateMode === UpdateMode.CREATE) {
+              throw new BadRequestException('Account already exists');
+            }
+            if (reqAccount.updateMode === UpdateMode.UPDATE) {
+              googleServiceAccountsExistingCopy[existAccountIndex] = {
+                clientEmail: reqAccount.clientEmail
+                  ? reqAccount.clientEmail
+                  : existAccount.clientEmail,
+                privateKey: reqAccount.privateKey
+                  ? reqAccount.privateKey
+                  : existAccount.privateKey,
+                rootFolderId: reqAccount.rootFolderId
+                  ? reqAccount.rootFolderId
+                  : existAccount.rootFolderId,
+              };
+              updateAndDeleteCount--;
+            }
+
+            if (reqAccount.updateMode === UpdateMode.DELETE) {
+              googleServiceAccountsExistingCopy.splice(
+                existAccountIndex - deletionOffsetIndex,
+                1,
+              );
+              deletionOffsetIndex++;
+              updateAndDeleteCount--;
+            }
+          }
+        },
+      );
+      if (updateAndDeleteCount !== 0) {
+        throw new BadRequestException('Account does not exists');
+      }
+    });
+
+    const result: GoogleServiceAccounts[] = [
+      ...googleServiceAccountsExistingCopy,
+      ...googleServiceAccountsRequestCopy,
+    ];
+
+    return result;
   }
 }

@@ -6,15 +6,7 @@ import {
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { UUID } from 'crypto';
-import {
-  and,
-  Column,
-  ColumnBaseConfig,
-  ColumnDataType,
-  eq,
-  InferInsertModel,
-  isNull,
-} from 'drizzle-orm';
+import { and, Column, eq, InferInsertModel, isNull } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { PgTable, TableConfig } from 'drizzle-orm/pg-core';
 import { RelatedTables, TableWithId } from '../types/types';
@@ -534,6 +526,8 @@ export abstract class BaseAbstractRepository<
     results.forEach((result) => {
       Object.keys(result).forEach((key) => {
         const entity = result[key];
+
+        if (entity === null || entity === undefined) return;
 
         if (!aggregated[key]) {
           aggregated[key] = [];

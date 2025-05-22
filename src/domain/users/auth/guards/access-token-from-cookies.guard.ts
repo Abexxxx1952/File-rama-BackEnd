@@ -31,6 +31,7 @@ export class AccessTokenAuthGuardFromCookies {
       });
 
       request.user = this.validate(payload);
+
       return true;
     } catch (error) {
       throw new UnauthorizedException('Invalid token');

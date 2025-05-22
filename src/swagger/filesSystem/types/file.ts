@@ -1,5 +1,4 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { SchemaObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 import { UUID } from 'crypto';
 import { File } from '@/domain/filesSystem/types/file';
 
@@ -64,7 +63,7 @@ export class FileModel implements File {
   fileDescription?: string;
 }
 
-export const fileSchema: SchemaObject = {
+/* export const fileSchema: SchemaObject = {
   title: 'File',
   type: 'object',
   properties: {
@@ -146,3 +145,4 @@ export const fileSchema: SchemaObject = {
     'isPublic',
   ],
 };
+ */

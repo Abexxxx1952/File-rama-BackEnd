@@ -1,5 +1,4 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { SchemaObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 import { UUID } from 'crypto';
 import { Folder } from '@/domain/filesSystem/types/folder';
 
@@ -12,9 +11,13 @@ export class FolderModel implements Folder {
   userId: UUID;
   @ApiProperty({ type: 'string', format: 'UUID' })
   parentFolderId: UUID;
+  @ApiProperty()
+  createdDate: Date;
+  @ApiProperty()
+  isPublic: boolean;
 }
 
-export const folderSchema: SchemaObject = {
+/* export const folderSchema: SchemaObject = {
   title: 'Folder',
   type: 'object',
   properties: {
@@ -41,3 +44,4 @@ export const folderSchema: SchemaObject = {
   },
   required: ['id', 'folderName', 'userId', 'parentFolderId'],
 };
+ */

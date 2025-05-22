@@ -1,11 +1,11 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { log } from 'console';
 import { UUID } from 'crypto';
 import { EventEmitter } from 'events';
 import { FastifyRequest } from 'fastify';
@@ -72,6 +72,9 @@ export class FilesSystemService {
 
     user = userWithRelatedEntity.users[0];
 
+    if (!user.isVerified) {
+      throw new ForbiddenException('User must be verified');
+    }
     try {
       for (const account of user.googleServiceAccounts) {
         const { clientEmail, privateKey, rootFolderId } = account;
@@ -459,16 +462,21 @@ export class FilesSystemService {
     });
   }
   async authenticate(authDto: GoogleAuthDto): Promise<drive_v3.Drive> {
-    const auth = new google.auth.GoogleAuth({
-      credentials: {
-        client_email: authDto.clientEmail,
-        private_key: authDto.privateKey,
-      },
-      scopes: ['https://www.googleapis.com/auth/drive'],
-    });
+    try {
+      const auth = new google.auth.GoogleAuth({
+        credentials: {
+          client_email: authDto.clientEmail,
+          private_key: authDto.privateKey,
+        },
+        scopes: ['https://www.googleapis.com/auth/drive'],
+      });
 
-    this.driveService = google.drive({ version: 'v3', auth });
-    return google.drive({ version: 'v3', auth });
+      this.driveService = google.drive({ version: 'v3', auth });
+
+      return google.drive({ version: 'v3', auth });
+    } catch (error) {
+      throw error;
+    }
   }
   async handleNameConflict(
     entity: 'file' | 'folder',

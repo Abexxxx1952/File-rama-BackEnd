@@ -1,13 +1,14 @@
 import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
+  IsBoolean,
   IsNotEmpty,
   IsOptional,
   IsString,
   ValidateNested,
 } from 'class-validator';
-import { GoogleServiceAccounts } from '../types/google-service-accounts';
 import { Payloads } from '../types/payloads';
+import { GoogleServiceAccountsDto } from './google-service-accounts';
 
 export class UpdateUserDto {
   @IsOptional()
@@ -34,8 +35,12 @@ export class UpdateUserDto {
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => GoogleServiceAccounts)
-  readonly googleServiceAccounts?: GoogleServiceAccounts[];
+  @Type(() => GoogleServiceAccountsDto)
+  googleServiceAccounts?: GoogleServiceAccountsDto[];
+
+  @IsOptional()
+  @IsBoolean()
+  readonly isTwoFactorEnabled?: boolean;
 }
 
 export class UpdateUserDtoLocalWithoutPasswords extends UpdateUserDto {
@@ -47,5 +52,5 @@ export class UpdateUserDtoLocalWithoutPasswords extends UpdateUserDto {
   @Transform(({ obj }) => {
     return `[clientEmail: ${obj.googleServiceAccounts.clientEmail}; privateKey:${typeof obj.googleServiceAccounts}; rootFolderId: ${obj.googleServiceAccounts.rootFolderId}]`;
   })
-  readonly googleServiceAccounts: GoogleServiceAccounts[];
+  readonly googleServiceAccounts: GoogleServiceAccountsDto[];
 }

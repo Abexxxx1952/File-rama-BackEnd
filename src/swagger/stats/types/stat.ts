@@ -1,8 +1,12 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiExtraModels, ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { UUID } from 'crypto';
 import { Stat } from '@/domain/stats/types/stat';
-import { DriveInfoResultModel } from './driveInfoResult';
+import {
+  DriveInfoErrorResultModel,
+  DriveInfoSuccessResultModel,
+} from './driveInfoResult';
 
+@ApiExtraModels(DriveInfoSuccessResultModel, DriveInfoErrorResultModel)
 export class StatModel implements Stat {
   @ApiProperty({ type: 'string', format: 'UUID' })
   id: UUID;
@@ -22,5 +26,14 @@ export class StatModel implements Stat {
   @ApiProperty()
   usedSize: number;
 
-  driveInfoResult: DriveInfoResultModel[];
+  @ApiProperty({
+    type: 'array',
+    items: {
+      anyOf: [
+        { $ref: getSchemaPath(DriveInfoSuccessResultModel) },
+        { $ref: getSchemaPath(DriveInfoErrorResultModel) },
+      ],
+    },
+  })
+  driveInfoResult: (DriveInfoSuccessResultModel | DriveInfoErrorResultModel)[];
 }

@@ -1,5 +1,12 @@
 import { relations } from 'drizzle-orm';
-import { index, integer, jsonb, pgTable, uuid } from 'drizzle-orm/pg-core';
+import {
+  bigint,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  uuid,
+} from 'drizzle-orm/pg-core';
 import { usersSchema } from 'src/domain/users/schema/users.schema';
 import { DriveInfoResult } from '../types/driveInfoResult';
 
@@ -11,9 +18,9 @@ export const statsSchema = pgTable(
       .references(() => usersSchema.id, { onDelete: 'cascade' })
       .unique(),
     fileCount: integer('file_count').notNull().default(0),
-    folderCount: integer('file_count').notNull().default(0),
-    totalSize: integer('total_size').notNull().default(0),
-    usedSize: integer('used_size').notNull().default(0),
+    folderCount: integer('folder_count').notNull().default(0),
+    totalSize: bigint('total_size', { mode: 'number' }).notNull().default(0),
+    usedSize: bigint('used_size', { mode: 'number' }).notNull().default(0),
     driveInfoResult: jsonb('drive_info_result')
       .$type<DriveInfoResult[]>()
       .notNull()

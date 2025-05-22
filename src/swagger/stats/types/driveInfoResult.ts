@@ -1,7 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { DriveInfoResult } from '@/domain/stats/types/driveInfoResult';
+import {
+  DriveInfoErrorResult,
+  DriveInfoSuccessResult,
+} from '@/domain/stats/types/driveInfoResult';
 
-export class DriveInfoResultModel implements DriveInfoResult {
+export class DriveInfoSuccessResultModel implements DriveInfoSuccessResult {
   @ApiProperty()
   driveEmail: string;
 
@@ -13,4 +16,15 @@ export class DriveInfoResultModel implements DriveInfoResult {
 
   @ApiProperty()
   availableSpace: number;
+}
+
+export class DriveInfoErrorResultModel implements DriveInfoErrorResult {
+  @ApiProperty()
+  driveEmail: string;
+
+  @ApiProperty({ enum: ['Connection error'] })
+  error: 'Connection error';
+
+  @ApiProperty()
+  errorMessage: string;
 }

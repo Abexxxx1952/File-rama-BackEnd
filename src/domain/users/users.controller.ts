@@ -33,6 +33,7 @@ import {
   ApiUsersGetFindManyBy,
   ApiUsersGetFindOneBy,
   ApiUsersGetFindWithRelations,
+  ApiUsersGetFindWithRelationsFromHeaders,
   ApiUsersPatchUpdate,
   ApiUsersPatchUpdateFromHeaders,
 } from '../../swagger/users';
@@ -82,6 +83,33 @@ export class UsersController {
   @UseInterceptors(CacheInterceptor)
   @ApiUsersGetFindWithRelations()
   async findByIdWithRelations(
+    @CurrentUser('id') currentUserId: UUID,
+    @Query() condition: { condition: string },
+  ): Promise<UserWithRelatedEntity> {
+    let parsedRelations: relationsUserDto;
+    try {
+      parsedRelations =
+        await this.usersRepository.parsedCondition<relationsUserDto>(
+          condition,
+          relationsUserDto,
+        );
+    } catch (error) {
+      throw error;
+    }
+
+    return await this.usersRepository.findByIdWithRelations<UserWithRelatedEntity>(
+      currentUserId,
+      parsedRelations.relations,
+    );
+  }
+
+  @Get('findWithRelationsFromHeaders')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AccessTokenAuthGuardFromHeaders)
+  @UseInterceptors(new TransformResultInterceptor(User))
+  @UseInterceptors(CacheInterceptor)
+  @ApiUsersGetFindWithRelationsFromHeaders()
+  async findByIdWithRelationsFromHeaders(
     @CurrentUser('id') currentUserId: UUID,
     @Query() condition: { condition: string },
   ): Promise<UserWithRelatedEntity> {

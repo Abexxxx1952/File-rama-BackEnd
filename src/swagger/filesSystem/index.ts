@@ -1,20 +1,21 @@
 import {
   ApiBody,
   ApiCookieAuth,
+  ApiExtraModels,
   ApiOperation,
   ApiParam,
   ApiQuery,
   ApiResponse,
+  getSchemaPath,
 } from '@nestjs/swagger';
-import { UUID } from 'crypto';
 import { PaginationParamsArgs } from '../types/paginationParams';
 import { CreateFileArgs } from './types/create-file';
 import { CreateFilePermissionsArgs } from './types/create-file-permissions';
 import { CreateFolderArgs } from './types/create-folder';
-import { FileModel, fileSchema } from './types/file';
+import { FileModel } from './types/file';
 import { FileUploadResultModel } from './types/file-upload-result';
 import { FindFilesByConditionWithPaginationParamsArgs } from './types/find-files-by-string-condition';
-import { FolderModel, folderSchema } from './types/folder';
+import { FolderModel } from './types/folder';
 import { UpdateFileArgs } from './types/update-file.dto';
 import { UpdateFolderArgs } from './types/update-folder.dto';
 
@@ -35,13 +36,17 @@ export function ApiFilesSystemGet() {
       description: 'ID of the parent folder (optional)',
     })(target, propertyKey, descriptor);
     ApiQuery({ type: PaginationParamsArgs })(target, propertyKey, descriptor);
+    ApiExtraModels(FileModel, FolderModel);
     ApiResponse({
       status: 200,
       description: 'Got user files and folders',
       schema: {
         type: 'array',
         items: {
-          anyOf: [{ ...fileSchema }, { ...folderSchema }],
+          anyOf: [
+            { $ref: getSchemaPath(FileModel) },
+            { $ref: getSchemaPath(FolderModel) },
+          ],
         },
       },
       example: [

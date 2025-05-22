@@ -1,0 +1,1 @@
+ALTER TABLE "stats" ADD COLUMN "folder_count" integer DEFAULT 0 NOT NULL;

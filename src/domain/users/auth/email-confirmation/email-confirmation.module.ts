@@ -1,4 +1,6 @@
 import { forwardRef, Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
 import { MailModule } from '@/mail/mail.module';
 import { UsersModule } from '../../users.module';
 import { AuthModule } from '../auth.module';
@@ -8,6 +10,8 @@ import { EmailConfirmationService } from './email-confirmation.service';
 @Module({
   imports: [
     MailModule,
+    ConfigModule,
+    JwtModule,
     forwardRef(() => AuthModule),
     forwardRef(() => UsersModule),
   ],

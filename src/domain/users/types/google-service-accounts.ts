@@ -1,10 +1,10 @@
-import { IsString } from 'class-validator';
+import { Exclude } from 'class-transformer';
 
 export class GoogleServiceAccounts {
-  @IsString()
   clientEmail: string;
-  @IsString()
+
+  @Exclude()
   privateKey: string;
-  @IsString()
-  rootFolderId: string;
+
+  rootFolderId?: string;
 }

@@ -16,7 +16,6 @@ import { LoginLocalUser } from './types/login-local-user';
 import { NewPasswordArgs } from './types/new-password';
 import { RelationsUserArgs } from './types/relations-user';
 import { ResetPasswordArgs } from './types/reset-password';
-import { SendTokenArgs } from './types/send-token';
 import { StringResponseArgs } from './types/string-response';
 import { TokenVerificationArgs } from './types/tokenV-verification';
 import { UpdateUserArgs } from './types/update-user';
@@ -99,6 +98,7 @@ export function ApiUsersGetFindWithRelations() {
     ApiOperation({
       summary: 'Get user with relations. (AccessToken required)',
     })(target, propertyKey, descriptor);
+    ApiCookieAuth('refresh_token')(target, propertyKey, descriptor);
     ApiQuery({
       type: RelationsUserArgs,
     })(target, propertyKey, descriptor);
@@ -133,6 +133,52 @@ export function ApiUsersGetFindWithRelations() {
     })(target, propertyKey, descriptor);
   };
 }
+
+export function ApiUsersGetFindWithRelationsFromHeaders() {
+  return function (
+    target: any,
+    propertyKey: string,
+    descriptor: PropertyDescriptor,
+  ) {
+    ApiOperation({
+      summary: 'Get user with relations. (AccessToken required)',
+    })(target, propertyKey, descriptor);
+    ApiBearerAuth('Authorization')(target, propertyKey, descriptor);
+    ApiQuery({
+      type: RelationsUserArgs,
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 200,
+      description: 'Got the user with relations',
+      type: UserPoorModel,
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 400,
+      description: 'Bad Request',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 400,
+      description: 'Invalid JSON format',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 400,
+      description: 'Validation failed: ',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 401,
+      description: 'Unauthorized',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 429,
+      description: 'ThrottlerException: Too Many Requests',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 500,
+      description: 'Internal Server Error',
+    })(target, propertyKey, descriptor);
+  };
+}
+
 export function ApiUsersGetFindOneBy() {
   return function (
     target: any,
@@ -795,7 +841,39 @@ export function ApiUsersPostEmailConfirmationSendVerificationToken() {
       propertyKey,
       descriptor,
     );
-    ApiBody({ type: SendTokenArgs })(target, propertyKey, descriptor);
+    ApiCookieAuth('access_token')(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 201,
+      description: 'Verification token sended',
+      type: StringResponseArgs,
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 400,
+      description: 'Bad Request',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 429,
+      description: 'ThrottlerException: Too Many Requests',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 500,
+      description: 'Internal Server Error',
+    })(target, propertyKey, descriptor);
+  };
+}
+
+export function ApiUsersPostEmailConfirmationSendVerificationTokenFromHeaders() {
+  return function (
+    target: any,
+    propertyKey: string,
+    descriptor: PropertyDescriptor,
+  ) {
+    ApiOperation({ summary: 'Send verification token' })(
+      target,
+      propertyKey,
+      descriptor,
+    );
+    ApiBearerAuth('Authorization')(target, propertyKey, descriptor);
     ApiResponse({
       status: 201,
       description: 'Verification token sended',

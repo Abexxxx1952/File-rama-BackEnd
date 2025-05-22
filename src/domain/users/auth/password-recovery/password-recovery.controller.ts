@@ -30,7 +30,6 @@ export class PasswordRecoveryController {
   ): Promise<{ message: string }> {
     const result =
       this.passwordRecoveryService.requestPasswordRecovery(resetPasswordDto);
-    console.log('result', result);
 
     return result;
   }

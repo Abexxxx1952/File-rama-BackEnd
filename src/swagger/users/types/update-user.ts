@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { GoogleServiceAccounts } from '@/domain/users/types/google-service-accounts';
+import { GoogleServiceAccountsDto } from '@/domain/users/dto/google-service-accounts';
 import { UpdateUserDto } from '../../../domain/users/dto/update.dto';
 import { Payloads } from '../../../domain/users/types/payloads';
 import { GoogleServiceAccountsModel } from './google-service-accounts';
@@ -19,5 +19,8 @@ export class UpdateUserArgs implements UpdateUserDto {
   readonly payloads?: Payloads[];
 
   @ApiPropertyOptional({ type: GoogleServiceAccountsModel, isArray: true })
-  readonly googleServiceAccounts: GoogleServiceAccounts[];
+  readonly googleServiceAccounts?: GoogleServiceAccountsDto[];
+
+  @ApiPropertyOptional({ type: 'boolean' })
+  readonly isTwoFactorEnabled?: boolean;
 }

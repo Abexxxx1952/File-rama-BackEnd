@@ -46,17 +46,21 @@ export class AuthService {
 
       response.cookie('Authentication_accessToken', tokens.access_token, {
         httpOnly: true,
-        sameSite: 'lax',
+        sameSite: 'none',
+        secure: process.env.MODE === 'production',
         path: '/',
         expires: this.getExpiresTimeAT(),
       });
 
       response.cookie('Authentication_refreshToken', tokens.refresh_token, {
         httpOnly: true,
-        sameSite: 'lax',
+        sameSite: 'none',
+        secure: process.env.MODE === 'production',
         path: this.configService.getOrThrow<string>('REFRESH_TOKEN_PATH'),
         expires: this.getExpiresTimeRT(),
       });
+
+      response.send(user);
 
       return user;
     } catch (error) {
@@ -186,7 +190,6 @@ export class AuthService {
 
       if (
         !userExists.password ||
-        !userExists.isVerified ||
         !userExists.registrationSources.includes(RegistrationSources.Local)
       ) {
         throw new ForbiddenException('Access Denied');
