@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { UUID } from 'crypto';
 import { UsersRepository } from '@/domain/users/repository/users.repository';
 import { FilesSystemService } from '../filesSystem/filesSystem.service';
@@ -39,14 +39,6 @@ export class StatsService {
           const totalSpace = Number(storageQuota.limit);
           const usedSpace = Number(storageQuota.usage);
           const availableSpace = totalSpace - usedSpace;
-          console.log(
-            'availableSpace',
-            availableSpace,
-            'totalSpace',
-            totalSpace,
-            'usedSpace',
-            usedSpace,
-          );
 
           totalSize += totalSpace;
           usedSize += usedSpace;

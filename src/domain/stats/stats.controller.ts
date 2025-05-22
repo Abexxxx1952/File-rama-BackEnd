@@ -30,7 +30,7 @@ export class StatsController {
   @Get('userStats')
   @UseGuards(AccessTokenAuthGuardFromCookies)
   @HttpCode(HttpStatus.OK)
-  /*   @UseInterceptors(CacheInterceptor) */
+  @UseInterceptors(CacheInterceptor)
   @ApiStatsGet()
   async getStats(@CurrentUser('id') currentUserId: UUID): Promise<Stat> {
     await this.statsService.getGoogleDriveInfo(currentUserId);

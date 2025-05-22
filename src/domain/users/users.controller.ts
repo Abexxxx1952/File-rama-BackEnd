@@ -207,7 +207,7 @@ export class UsersController {
   @UseInterceptors(new TransformResultInterceptor(User))
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/users/*', '/api/v1/stats'],
+    cacheKey: ['/api/v1/users/*', '/api/v1/stats/*'],
   })
   @UseInterceptors(CacheInterceptor)
   @ApiUsersPatchUpdateFromHeaders()

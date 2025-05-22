@@ -128,19 +128,23 @@ export class CacheInterceptor implements NestInterceptor {
   }
 
   private getCacheKey(request: any, userId?: string): string {
-    let cacheKey = request.path;
+    let cacheKey = request.url;
 
     if (userId) {
       cacheKey += `_user_${userId}`;
     }
 
     const query = JSON.stringify(request.query);
+
     const body = JSON.stringify(request.body);
+
     const params = JSON.stringify(request.params);
 
-    if (query !== '{}') cacheKey += `_${query}`;
-    if (body !== '{}') cacheKey += `_${body}`;
-    if (params !== '{}') cacheKey += `_${params}`;
+    if (query !== '{}' && query !== undefined) cacheKey += `_${query}`;
+
+    if (body !== '{}' && body !== undefined) cacheKey += `_${body}`;
+
+    if (params !== '{}' && params !== undefined) cacheKey += `_${params}`;
 
     return cacheKey;
   }
@@ -149,6 +153,8 @@ export class CacheInterceptor implements NestInterceptor {
     userId?: string,
   ): Promise<void> {
     const keys = await this.cacheManager.store.keys();
+    console.log('keys', keys);
+
     let specificPath: string;
     for (const key of keys) {
       for (const path of paths) {
