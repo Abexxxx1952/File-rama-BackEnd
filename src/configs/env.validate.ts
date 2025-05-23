@@ -82,6 +82,14 @@ class EnvironmentVariables {
 
   @IsString()
   @IsNotEmpty()
+  ACCESS_TOKEN_NAME: string;
+
+  @IsString()
+  @IsNotEmpty()
+  REFRESH_TOKEN_NAME: string;
+
+  @IsString()
+  @IsNotEmpty()
   GOOGLE_OAUTH2_CLIENT_ID: string;
 
   @IsString()

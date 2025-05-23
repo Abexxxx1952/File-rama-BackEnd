@@ -41,7 +41,7 @@ import {
   ApiFilesSystemsGetFindFileById,
   ApiFilesSystemsGetFindFolderById,
 } from '@/swagger/filesSystem';
-import { AccessTokenAuthGuardFromCookies } from '../users/auth/guards/access-token-from-cookies.guard';
+import { AccessTokenAuthGuardFromHeadersAndCookies } from '../users/auth/guards/access-token-from-headers-cookies.guard';
 import { CreateFilePermissionsDto } from './dto/create-file-permissions';
 import { CreateFolderDto } from './dto/create-folder.dto';
 import { FindFilesByConditionsDto } from './dto/find-public-file-by-conditions.dto';
@@ -65,10 +65,10 @@ export class FilesController {
     private readonly foldersRepository: FoldersRepository,
   ) {}
 
-  @Get()
+  @Get('findAll')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
   @UseInterceptors(CacheInterceptor)
-  @UseGuards(AccessTokenAuthGuardFromCookies)
   @ApiFilesSystemGet()
   async findSlice(
     @CurrentUser('id') currentUserId: UUID,
@@ -85,8 +85,8 @@ export class FilesController {
 
   @Get('findFileById/:id')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
   @UseInterceptors(CacheInterceptor)
-  @UseGuards(AccessTokenAuthGuardFromCookies)
   @ApiFilesSystemsGetFindFileById()
   async findFileById(
     @CurrentUser('id') currentUserId: UUID,
@@ -100,8 +100,8 @@ export class FilesController {
 
   @Get('findFolderById/:id')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
   @UseInterceptors(CacheInterceptor)
-  @UseGuards(AccessTokenAuthGuardFromCookies)
   @ApiFilesSystemsGetFindFolderById()
   async findFolderById(
     @CurrentUser('id') currentUserId: UUID,
@@ -141,13 +141,13 @@ export class FilesController {
 
   @Post('createFile')
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(AccessTokenAuthGuardFromCookies)
+  @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
     cacheKey: [
-      '/api/v1/filesSystem/*',
-      '/api/v1/users/findWithRelations/',
-      '/api/v1/stats/',
+      '/api/v1/filesSystem/filesSystemItems',
+      '/api/v1/users/findWithRelations',
+      '/api/v1/stats',
     ],
   })
   @UseInterceptors(CacheInterceptor)
@@ -161,13 +161,13 @@ export class FilesController {
 
   @Post('createFolder')
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(AccessTokenAuthGuardFromCookies)
+  @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
     cacheKey: [
-      '/api/v1/filesSystem/*',
-      '/api/v1/users/findWithRelations/',
-      '/api/v1/stats/',
+      '/api/v1/filesSystem/filesSystemItems',
+      '/api/v1/users/findWithRelations',
+      '/api/v1/stats',
     ],
   })
   @UseInterceptors(CacheInterceptor)
@@ -184,10 +184,10 @@ export class FilesController {
 
   @Patch('createFilePermissions')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(AccessTokenAuthGuardFromCookies)
+  @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/filesSystem/*', '/api/v1/users/findWithRelations/'],
+    cacheKey: ['/api/v1/filesSystem*', '/api/v1/users/findWithRelations'],
   })
   @UseInterceptors(CacheInterceptor)
   @ApiFilesSystemPatchCreateFilePermissions()
@@ -203,10 +203,10 @@ export class FilesController {
 
   @Patch('deleteFilePermissions')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(AccessTokenAuthGuardFromCookies)
+  @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/filesSystem/*', '/api/v1/users/findWithRelations/'],
+    cacheKey: ['/api/v1/filesSystem*', '/api/v1/users/findWithRelations'],
   })
   @UseInterceptors(CacheInterceptor)
   @ApiFilesSystemPatchDeleteFilePermissions()
@@ -221,11 +221,11 @@ export class FilesController {
   }
 
   @Patch('updateFile')
-  @UseGuards(AccessTokenAuthGuardFromCookies)
+  @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
   @HttpCode(HttpStatus.OK)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/filesSystem/*', '/api/v1/users/findWithRelations/'],
+    cacheKey: ['/api/v1/filesSystem*', '/api/v1/users/findWithRelations'],
   })
   @UseInterceptors(CacheInterceptor)
   @ApiFilesSystemPatchUpdateFile()
@@ -237,11 +237,11 @@ export class FilesController {
   }
 
   @Patch('updateFolder')
-  @UseGuards(AccessTokenAuthGuardFromCookies)
+  @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
   @HttpCode(HttpStatus.OK)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/filesSystem/*', '/api/v1/users/findWithRelations/'],
+    cacheKey: ['/api/v1/filesSystem*', '/api/v1/users/findWithRelations'],
   })
   @UseInterceptors(CacheInterceptor)
   @ApiFilesSystemPatchUpdateFolder()
@@ -256,14 +256,14 @@ export class FilesController {
   }
 
   @Delete('deleteFile')
-  @UseGuards(AccessTokenAuthGuardFromCookies)
+  @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
   @HttpCode(HttpStatus.OK)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
     cacheKey: [
-      '/api/v1/filesSystem/*',
-      '/api/v1/users/findWithRelations/',
-      '/api/v1/stats/',
+      '/api/v1/filesSystem*',
+      '/api/v1/users/findWithRelations',
+      '/api/v1/stats',
     ],
   })
   @UseInterceptors(CacheInterceptor)
@@ -276,14 +276,14 @@ export class FilesController {
   }
 
   @Delete('deleteFolder')
-  @UseGuards(AccessTokenAuthGuardFromCookies)
+  @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
   @HttpCode(HttpStatus.OK)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
     cacheKey: [
-      '/api/v1/filesSystem/*',
-      '/api/v1/users/findWithRelations/',
-      '/api/v1/stats/',
+      '/api/v1/filesSystem*',
+      '/api/v1/users/findWithRelations',
+      '/api/v1/stats',
     ],
   })
   @UseInterceptors(CacheInterceptor)

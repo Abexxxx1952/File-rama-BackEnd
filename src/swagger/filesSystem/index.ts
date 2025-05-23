@@ -1,4 +1,5 @@
 import {
+  ApiBearerAuth,
   ApiBody,
   ApiCookieAuth,
   ApiExtraModels,
@@ -29,6 +30,7 @@ export function ApiFilesSystemGet() {
       summary: 'Get all user files and folders. (AccessToken required)',
     })(target, propertyKey, descriptor);
     ApiCookieAuth('access_token')(target, propertyKey, descriptor);
+    ApiBearerAuth('authorization')(target, propertyKey, descriptor);
     ApiQuery({
       name: 'parentFolderId',
       type: String,
@@ -133,6 +135,7 @@ export function ApiFilesSystemsGetFindFileById() {
       descriptor,
     );
     ApiCookieAuth('access_token')(target, propertyKey, descriptor);
+    ApiBearerAuth('authorization')(target, propertyKey, descriptor);
     ApiParam({
       name: 'id',
       type: 'UUID',
@@ -178,6 +181,7 @@ export function ApiFilesSystemsGetFindFolderById() {
       descriptor,
     );
     ApiCookieAuth('access_token')(target, propertyKey, descriptor);
+    ApiBearerAuth('authorization')(target, propertyKey, descriptor);
     ApiParam({
       name: 'id',
       type: 'UUID',
@@ -271,6 +275,7 @@ export function ApiFilesSystemPostCreateFile() {
       summary: 'Create file. (AccessToken required)',
     })(target, propertyKey, descriptor);
     ApiCookieAuth('access_token')(target, propertyKey, descriptor);
+    ApiBearerAuth('authorization')(target, propertyKey, descriptor);
     ApiQuery({ type: CreateFileArgs })(target, propertyKey, descriptor);
     ApiResponse({
       status: 201,
@@ -306,6 +311,7 @@ export function ApiFilesSystemPostCreateFolder() {
       summary: 'Create folder. (AccessToken required)',
     })(target, propertyKey, descriptor);
     ApiCookieAuth('access_token')(target, propertyKey, descriptor);
+    ApiBearerAuth('authorization')(target, propertyKey, descriptor);
     ApiBody({ type: CreateFolderArgs })(target, propertyKey, descriptor);
     ApiResponse({
       status: 201,
@@ -341,6 +347,7 @@ export function ApiFilesSystemPatchCreateFilePermissions() {
       summary: 'Create file permissions. (AccessToken required)',
     })(target, propertyKey, descriptor);
     ApiCookieAuth('access_token')(target, propertyKey, descriptor);
+    ApiBearerAuth('authorization')(target, propertyKey, descriptor);
     ApiBody({ type: CreateFilePermissionsArgs })(
       target,
       propertyKey,
@@ -380,6 +387,7 @@ export function ApiFilesSystemPatchDeleteFilePermissions() {
       summary: 'Delete file permissions. (AccessToken required)',
     })(target, propertyKey, descriptor);
     ApiCookieAuth('access_token')(target, propertyKey, descriptor);
+    ApiBearerAuth('authorization')(target, propertyKey, descriptor);
     ApiBody({
       schema: {
         type: 'object',
@@ -425,6 +433,7 @@ export function ApiFilesSystemPatchUpdateFile() {
       summary: 'Update file. (AccessToken required)',
     })(target, propertyKey, descriptor);
     ApiCookieAuth('access_token')(target, propertyKey, descriptor);
+    ApiBearerAuth('authorization')(target, propertyKey, descriptor);
     ApiBody({ type: UpdateFileArgs })(target, propertyKey, descriptor);
     ApiResponse({
       status: 200,
@@ -460,6 +469,7 @@ export function ApiFilesSystemPatchUpdateFolder() {
       summary: 'Update folder. (AccessToken required)',
     })(target, propertyKey, descriptor);
     ApiCookieAuth('access_token')(target, propertyKey, descriptor);
+    ApiBearerAuth('authorization')(target, propertyKey, descriptor);
     ApiBody({ type: UpdateFolderArgs })(target, propertyKey, descriptor);
     ApiResponse({
       status: 200,
@@ -495,6 +505,7 @@ export function ApiFilesSystemDeleteDeleteFile() {
       summary: 'Delete file. (AccessToken required)',
     })(target, propertyKey, descriptor);
     ApiCookieAuth('access_token')(target, propertyKey, descriptor);
+    ApiBearerAuth('authorization')(target, propertyKey, descriptor);
     ApiResponse({
       status: 200,
       description: 'File deleted',
@@ -529,6 +540,7 @@ export function ApiFilesSystemDeleteDeleteFolder() {
       summary: 'Delete folder. (AccessToken required)',
     })(target, propertyKey, descriptor);
     ApiCookieAuth('access_token')(target, propertyKey, descriptor);
+    ApiBearerAuth('authorization')(target, propertyKey, descriptor);
     ApiResponse({
       status: 200,
       description: 'File deleted',

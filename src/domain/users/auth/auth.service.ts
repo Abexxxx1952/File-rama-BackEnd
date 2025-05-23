@@ -44,21 +44,29 @@ export class AuthService {
         this.updateRtToken(currentUser.email, tokens.refresh_token),
       ]);
 
-      response.cookie('Authentication_accessToken', tokens.access_token, {
-        httpOnly: true,
-        sameSite: 'none',
-        secure: process.env.MODE === 'production',
-        path: '/',
-        expires: this.getExpiresTimeAT(),
-      });
+      response.cookie(
+        this.configService.getOrThrow<string>('ACCESS_TOKEN_NAME'),
+        tokens.access_token,
+        {
+          httpOnly: true,
+          sameSite: 'none',
+          secure: process.env.MODE === 'production',
+          path: '/',
+          expires: this.getExpiresTimeAT(),
+        },
+      );
 
-      response.cookie('Authentication_refreshToken', tokens.refresh_token, {
-        httpOnly: true,
-        sameSite: 'none',
-        secure: process.env.MODE === 'production',
-        path: this.configService.getOrThrow<string>('REFRESH_TOKEN_PATH'),
-        expires: this.getExpiresTimeRT(),
-      });
+      response.cookie(
+        this.configService.getOrThrow<string>('REFRESH_TOKEN_NAME'),
+        tokens.refresh_token,
+        {
+          httpOnly: true,
+          sameSite: 'none',
+          secure: process.env.MODE === 'production',
+          path: this.configService.getOrThrow<string>('REFRESH_TOKEN_PATH'),
+          expires: this.getExpiresTimeRT(),
+        },
+      );
 
       response.send(user);
 

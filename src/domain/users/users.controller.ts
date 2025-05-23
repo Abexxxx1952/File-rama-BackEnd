@@ -27,17 +27,15 @@ import {
 import { PaginationParams } from '../../database/paginationDto/pagination.dto';
 import {
   ApiUsersDeleteDeleteUser,
-  ApiUsersDeleteDeleteUserFromHeaders,
   ApiUsersGet,
   ApiUsersGetFindById,
   ApiUsersGetFindManyBy,
   ApiUsersGetFindOneBy,
   ApiUsersGetFindWithRelations,
-  ApiUsersGetFindWithRelationsFromHeaders,
   ApiUsersPatchUpdate,
-  ApiUsersPatchUpdateFromHeaders,
 } from '../../swagger/users';
 import { AccessTokenAuthGuardFromCookies } from './auth/guards/access-token-from-cookies.guard';
+import { AccessTokenAuthGuardFromHeadersAndCookies } from './auth/guards/access-token-from-headers-cookies.guard';
 import { AccessTokenAuthGuardFromHeaders } from './auth/guards/access-token-from-headers.guard';
 import { FindUsersByConditionsDto } from './dto/find-by-conditions.dto';
 import { relationsUserDto } from './dto/relations.dto';
@@ -58,7 +56,7 @@ export class UsersController {
     private readonly usersRepository: UsersRepository,
   ) {}
 
-  @Get()
+  @Get('findAll')
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(new TransformResultInterceptor(UserPoor))
   @UseInterceptors(CacheInterceptor)
@@ -78,38 +76,11 @@ export class UsersController {
 
   @Get('findWithRelations')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(AccessTokenAuthGuardFromCookies)
+  @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
   @UseInterceptors(new TransformResultInterceptor(User))
   @UseInterceptors(CacheInterceptor)
   @ApiUsersGetFindWithRelations()
   async findByIdWithRelations(
-    @CurrentUser('id') currentUserId: UUID,
-    @Query() condition: { condition: string },
-  ): Promise<UserWithRelatedEntity> {
-    let parsedRelations: relationsUserDto;
-    try {
-      parsedRelations =
-        await this.usersRepository.parsedCondition<relationsUserDto>(
-          condition,
-          relationsUserDto,
-        );
-    } catch (error) {
-      throw error;
-    }
-
-    return await this.usersRepository.findByIdWithRelations<UserWithRelatedEntity>(
-      currentUserId,
-      parsedRelations.relations,
-    );
-  }
-
-  @Get('findWithRelationsFromHeaders')
-  @HttpCode(HttpStatus.OK)
-  @UseGuards(AccessTokenAuthGuardFromHeaders)
-  @UseInterceptors(new TransformResultInterceptor(User))
-  @UseInterceptors(CacheInterceptor)
-  @ApiUsersGetFindWithRelationsFromHeaders()
-  async findByIdWithRelationsFromHeaders(
     @CurrentUser('id') currentUserId: UUID,
     @Query() condition: { condition: string },
   ): Promise<UserWithRelatedEntity> {
@@ -181,12 +152,12 @@ export class UsersController {
 
   @Patch('update')
   @ParseRequestBodyWhenLogging(UpdateUserDtoLocalWithoutPasswords)
-  @UseGuards(AccessTokenAuthGuardFromCookies)
+  @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(new TransformResultInterceptor(User))
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/users/*', '/api/v1/stats'],
+    cacheKey: ['/api/v1/users*', '/api/v1/stats'],
   })
   @UseInterceptors(CacheInterceptor)
   @ApiUsersPatchUpdate()
@@ -200,54 +171,17 @@ export class UsersController {
     );
   }
 
-  @Patch('updateFromHeaders')
-  @ParseRequestBodyWhenLogging(UpdateUserDtoLocalWithoutPasswords)
-  @UseGuards(AccessTokenAuthGuardFromHeaders)
-  @HttpCode(HttpStatus.OK)
-  @UseInterceptors(new TransformResultInterceptor(User))
-  @CacheOptionInvalidateCache({
-    cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/users/*', '/api/v1/stats/*'],
-  })
-  @UseInterceptors(CacheInterceptor)
-  @ApiUsersPatchUpdateFromHeaders()
-  async updateUserFromHeaders(
-    @CurrentUser('id') currentUserId: UUID,
-    @Body() updateUserDto: UpdateUserDto,
-  ): Promise<User> {
-    return await this.usersRepository.updateUserById(
-      currentUserId,
-      updateUserDto,
-    );
-  }
-
   @Delete('delete')
-  @UseGuards(AccessTokenAuthGuardFromCookies)
+  @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(new TransformResultInterceptor(User))
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/users/*'],
+    cacheKey: ['/api/v1/users*', '/api/v1/stats'],
   })
   @UseInterceptors(CacheInterceptor)
   @ApiUsersDeleteDeleteUser()
   async deleteUser(@CurrentUser('id') currentUserId: UUID): Promise<User> {
-    return await this.usersRepository.deleteById(currentUserId);
-  }
-
-  @Delete('deleteFromHeaders')
-  @UseGuards(AccessTokenAuthGuardFromHeaders)
-  @HttpCode(HttpStatus.OK)
-  @UseInterceptors(new TransformResultInterceptor(User))
-  @CacheOptionInvalidateCache({
-    cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/users/*'],
-  })
-  @UseInterceptors(CacheInterceptor)
-  @ApiUsersDeleteDeleteUserFromHeaders()
-  async deleteUserFromHeaders(
-    @CurrentUser('id') currentUserId: UUID,
-  ): Promise<User> {
     return await this.usersRepository.deleteById(currentUserId);
   }
 }

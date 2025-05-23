@@ -153,17 +153,16 @@ export class CacheInterceptor implements NestInterceptor {
     userId?: string,
   ): Promise<void> {
     const keys = await this.cacheManager.store.keys();
-    console.log('keys', keys);
 
     let specificPath: string;
     for (const key of keys) {
       for (const path of paths) {
         specificPath = path;
         if (path.endsWith('*')) {
-          specificPath = path.slice(0, -1);
+          specificPath = path.slice(0, -1); // "*" invalidates all public paths
         }
         if (userId && !path.endsWith('*')) {
-          specificPath = `${path}_user_${userId}`;
+          specificPath = `${path}_user_${userId}`; // "userId" invalidates all auth protected paths
         }
 
         if (key.startsWith(specificPath)) {

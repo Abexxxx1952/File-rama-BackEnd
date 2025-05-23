@@ -9,11 +9,9 @@ import {
 import { CurrentUser } from '@/common/decorators/currentUser.decorator';
 import {
   ApiUsersPostEmailConfirmationSendVerificationToken,
-  ApiUsersPostEmailConfirmationSendVerificationTokenFromHeaders,
   ApiUsersPostEmailConfirmationTokenVerification,
 } from '@/swagger/users';
-import { AccessTokenAuthGuardFromCookies } from '../guards/access-token-from-cookies.guard';
-import { AccessTokenAuthGuardFromHeaders } from '../guards/access-token-from-headers.guard';
+import { AccessTokenAuthGuardFromHeadersAndCookies } from '../guards/access-token-from-headers-cookies.guard';
 import { TokenVerificationDto } from './dto/token-verification.dto';
 import { EmailConfirmationService } from './email-confirmation.service';
 
@@ -36,21 +34,9 @@ export class EmailConfirmationController {
 
   @Post('sendToken')
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(AccessTokenAuthGuardFromCookies)
+  @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
   @ApiUsersPostEmailConfirmationSendVerificationToken()
   public async sendToken(
-    @CurrentUser('email') currentUserEmail: string,
-  ): Promise<{ message: string }> {
-    return this.emailConfirmationService.sendVerificationToken(
-      currentUserEmail,
-    );
-  }
-
-  @Post('sendTokenFromHeaders')
-  @HttpCode(HttpStatus.CREATED)
-  @UseGuards(AccessTokenAuthGuardFromHeaders)
-  @ApiUsersPostEmailConfirmationSendVerificationTokenFromHeaders()
-  public async sendTokenFromHeaders(
     @CurrentUser('email') currentUserEmail: string,
   ): Promise<{ message: string }> {
     return this.emailConfirmationService.sendVerificationToken(
