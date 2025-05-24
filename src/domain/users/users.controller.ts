@@ -34,9 +34,8 @@ import {
   ApiUsersGetFindWithRelations,
   ApiUsersPatchUpdate,
 } from '../../swagger/users';
-import { AccessTokenAuthGuardFromCookies } from './auth/guards/access-token-from-cookies.guard';
 import { AccessTokenAuthGuardFromHeadersAndCookies } from './auth/guards/access-token-from-headers-cookies.guard';
-import { AccessTokenAuthGuardFromHeaders } from './auth/guards/access-token-from-headers.guard';
+import { USER_CHANGE_CACHE_INVALIDATE_PATHS } from './cache/cache-paths';
 import { FindUsersByConditionsDto } from './dto/find-by-conditions.dto';
 import { relationsUserDto } from './dto/relations.dto';
 import {
@@ -104,7 +103,6 @@ export class UsersController {
   @Get('findOneBy')
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(new TransformResultInterceptor(UserPoor))
-  @UseInterceptors(CacheInterceptor)
   @ApiUsersGetFindOneBy()
   async findOneByCondition(
     @Query() condition: { condition: string },
@@ -126,7 +124,6 @@ export class UsersController {
   @Get('findManyBy')
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(new TransformResultInterceptor(UserPoor))
-  @UseInterceptors(CacheInterceptor)
   @ApiUsersGetFindManyBy()
   async findManyByCondition(
     @Query() { offset, limit }: PaginationParams,
@@ -157,7 +154,7 @@ export class UsersController {
   @UseInterceptors(new TransformResultInterceptor(User))
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/users*', '/api/v1/stats'],
+    cacheKey: USER_CHANGE_CACHE_INVALIDATE_PATHS,
   })
   @UseInterceptors(CacheInterceptor)
   @ApiUsersPatchUpdate()
@@ -177,7 +174,7 @@ export class UsersController {
   @UseInterceptors(new TransformResultInterceptor(User))
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/users*', '/api/v1/stats'],
+    cacheKey: USER_CHANGE_CACHE_INVALIDATE_PATHS,
   })
   @UseInterceptors(CacheInterceptor)
   @ApiUsersDeleteDeleteUser()

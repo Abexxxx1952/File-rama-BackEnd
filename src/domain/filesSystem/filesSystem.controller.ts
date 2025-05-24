@@ -42,6 +42,13 @@ import {
   ApiFilesSystemsGetFindFolderById,
 } from '@/swagger/filesSystem';
 import { AccessTokenAuthGuardFromHeadersAndCookies } from '../users/auth/guards/access-token-from-headers-cookies.guard';
+import {
+  FILE_CHANGE_CACHE_INVALIDATE_PATHS,
+  FILE_CREATE_DELETE_CACHE_INVALIDATE_PATHS,
+  FILE_SYSTEM_ITEM_CHANGE_CACHE_INVALIDATE_PATHS,
+  FOLDER_CHANGE_CACHE_INVALIDATE_PATHS,
+  FOLDER_CREATE_DELETE_CACHE_INVALIDATE_PATHS,
+} from './cache/cache-paths';
 import { CreateFilePermissionsDto } from './dto/create-file-permissions';
 import { CreateFolderDto } from './dto/create-folder.dto';
 import { FindFilesByConditionsDto } from './dto/find-public-file-by-conditions.dto';
@@ -115,7 +122,6 @@ export class FilesController {
 
   @Get('findPublicFiles')
   @HttpCode(HttpStatus.OK)
-  @UseInterceptors(CacheInterceptor)
   @ApiFilesSystemGetFindPublicFiles()
   async findPublicFiles(
     @Query() condition: { condition: string },
@@ -144,11 +150,7 @@ export class FilesController {
   @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: [
-      '/api/v1/filesSystem/filesSystemItems',
-      '/api/v1/users/findWithRelations',
-      '/api/v1/stats',
-    ],
+    cacheKey: FILE_CREATE_DELETE_CACHE_INVALIDATE_PATHS,
   })
   @UseInterceptors(CacheInterceptor)
   @ApiFilesSystemPostCreateFile()
@@ -164,11 +166,7 @@ export class FilesController {
   @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: [
-      '/api/v1/filesSystem/filesSystemItems',
-      '/api/v1/users/findWithRelations',
-      '/api/v1/stats',
-    ],
+    cacheKey: FOLDER_CREATE_DELETE_CACHE_INVALIDATE_PATHS,
   })
   @UseInterceptors(CacheInterceptor)
   @ApiFilesSystemPostCreateFolder()
@@ -187,7 +185,7 @@ export class FilesController {
   @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/filesSystem*', '/api/v1/users/findWithRelations'],
+    cacheKey: FILE_SYSTEM_ITEM_CHANGE_CACHE_INVALIDATE_PATHS,
   })
   @UseInterceptors(CacheInterceptor)
   @ApiFilesSystemPatchCreateFilePermissions()
@@ -206,7 +204,7 @@ export class FilesController {
   @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/filesSystem*', '/api/v1/users/findWithRelations'],
+    cacheKey: FILE_SYSTEM_ITEM_CHANGE_CACHE_INVALIDATE_PATHS,
   })
   @UseInterceptors(CacheInterceptor)
   @ApiFilesSystemPatchDeleteFilePermissions()
@@ -225,7 +223,7 @@ export class FilesController {
   @HttpCode(HttpStatus.OK)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/filesSystem*', '/api/v1/users/findWithRelations'],
+    cacheKey: FILE_CHANGE_CACHE_INVALIDATE_PATHS,
   })
   @UseInterceptors(CacheInterceptor)
   @ApiFilesSystemPatchUpdateFile()
@@ -241,7 +239,7 @@ export class FilesController {
   @HttpCode(HttpStatus.OK)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/filesSystem*', '/api/v1/users/findWithRelations'],
+    cacheKey: FOLDER_CHANGE_CACHE_INVALIDATE_PATHS,
   })
   @UseInterceptors(CacheInterceptor)
   @ApiFilesSystemPatchUpdateFolder()
@@ -260,11 +258,7 @@ export class FilesController {
   @HttpCode(HttpStatus.OK)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: [
-      '/api/v1/filesSystem*',
-      '/api/v1/users/findWithRelations',
-      '/api/v1/stats',
-    ],
+    cacheKey: FILE_CREATE_DELETE_CACHE_INVALIDATE_PATHS,
   })
   @UseInterceptors(CacheInterceptor)
   @ApiFilesSystemDeleteDeleteFile()
@@ -280,11 +274,7 @@ export class FilesController {
   @HttpCode(HttpStatus.OK)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: [
-      '/api/v1/filesSystem*',
-      '/api/v1/users/findWithRelations',
-      '/api/v1/stats',
-    ],
+    cacheKey: FOLDER_CREATE_DELETE_CACHE_INVALIDATE_PATHS,
   })
   @UseInterceptors(CacheInterceptor)
   @ApiFilesSystemDeleteDeleteFolder()

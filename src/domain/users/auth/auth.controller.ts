@@ -18,6 +18,7 @@ import { TransformResultInterceptor } from '@/common/interceptors/transform-resu
 import { CurrentUser } from '../../../common/decorators/currentUser.decorator';
 import { ParseRequestBodyWhenLogging } from '../../../common/decorators/setMetadataRequestBodyLogging.decorator';
 import {
+  CACHE_INVALIDATE_KEY_FLAG,
   CacheInterceptor,
   CacheOptionInvalidateCache,
   CacheOptions,
@@ -77,7 +78,7 @@ export class AuthController {
   @HttpCode(HttpStatus.CREATED)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/users/'],
+    cacheKey: ['/api/v1/users' + CACHE_INVALIDATE_KEY_FLAG.ALL_PATHS],
   })
   @UseInterceptors(CacheInterceptor)
   @ApiUsersPostRegistration()
@@ -134,7 +135,7 @@ export class AuthController {
   @HttpCode(HttpStatus.MOVED_PERMANENTLY)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/users*'],
+    cacheKey: ['/api/v1/users' + CACHE_INVALIDATE_KEY_FLAG.ALL_PATHS],
   })
   @UseInterceptors(CacheInterceptor)
   @ApiUsersGetLoginGoogleCallback()
@@ -157,7 +158,7 @@ export class AuthController {
   @HttpCode(HttpStatus.MOVED_PERMANENTLY)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/users*'],
+    cacheKey: ['/api/v1/users' + CACHE_INVALIDATE_KEY_FLAG.ALL_PATHS],
   })
   @UseInterceptors(CacheInterceptor)
   @ApiUsersGetLoginGitHubCallback()

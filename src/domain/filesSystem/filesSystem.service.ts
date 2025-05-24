@@ -280,7 +280,7 @@ export class FilesSystemService {
 
   async findSlice(
     currentUserId: UUID,
-    parentFolderId: string | null = null,
+    parentFolderId?: string,
     offset?: number,
     limit?: number,
   ): Promise<(File | Folder)[]> {
