@@ -15,8 +15,9 @@ import { switchMap, tap } from 'rxjs/operators';
 
 export const CACHE_INVALIDATE_KEY_FLAG = {
   ALL_PATHS: '(allPath*)',
-  ALL_PATHS_WITH_ID: '(allPathWithId*)',
-  ALL_PATHS_ENDING_WITH_ID: '(allPathEndingWithId*)',
+  ALL_PRIVATE_PATHS_WITH_ID: '(allPathWithId*)',
+  ALL_PATHS_ENDING_WITH_ID_ONLY_USER: '(allPathEndingWithId*)',
+  ALL_PRIVATE_PATHS_WITH_OUT_ID: '(allPrivatePath*)',
 };
 const CACHE_OPTION_KEY = 'cache_option';
 const DEFAULT_TTL = 1000 * 60 * 10; // 10 minutes
@@ -134,7 +135,7 @@ export class CacheInterceptor implements NestInterceptor {
 
   private generateCacheKey(request: FastifyRequest): string {
     const userId = request.user?.id;
-    const { url, query, params, body } = request;
+    const { url, query, params } = request;
     const parts = [
       url,
       userId ? `user_${userId}` : '',
@@ -171,29 +172,46 @@ export class CacheInterceptor implements NestInterceptor {
         if (path.endsWith(CACHE_INVALIDATE_KEY_FLAG.ALL_PATHS)) {
           return path.slice(0, -CACHE_INVALIDATE_KEY_FLAG.ALL_PATHS.length); //  for invalidate all cache start with this path (public routes)
         }
-        if (path.endsWith(CACHE_INVALIDATE_KEY_FLAG.ALL_PATHS_WITH_ID)) {
+
+        if (
+          path.endsWith(CACHE_INVALIDATE_KEY_FLAG.ALL_PRIVATE_PATHS_WITH_ID)
+        ) {
           const basePath = path.slice(
             0,
-            -CACHE_INVALIDATE_KEY_FLAG.ALL_PATHS_WITH_ID.length,
+            -CACHE_INVALIDATE_KEY_FLAG.ALL_PRIVATE_PATHS_WITH_ID.length,
           );
 
           return keys.filter(
             (key) =>
               key.startsWith(basePath) &&
-              (userId ? key.includes(`_user_${userId}`) : true),
-          ); //  for invalidate all cache start with this path and include id (private routes or public routes)
+              (userId ? key.includes(`_user_${userId}`) : false),
+          ); //  for invalidate all cache start with this path and include id (private routes). For routes witch contains query or params
         }
 
-        if (path.endsWith(CACHE_INVALIDATE_KEY_FLAG.ALL_PATHS_ENDING_WITH_ID)) {
+        if (
+          path.endsWith(CACHE_INVALIDATE_KEY_FLAG.ALL_PRIVATE_PATHS_WITH_OUT_ID)
+        ) {
           return (
             path.slice(
               0,
-              -CACHE_INVALIDATE_KEY_FLAG.ALL_PATHS_ENDING_WITH_ID.length,
-            ) + (userId ? `${userId}` : '')
-          ); //  for invalidate cache invalidate cache ending with id (public routes)
+              -CACHE_INVALIDATE_KEY_FLAG.ALL_PRIVATE_PATHS_WITH_OUT_ID.length,
+            ) + (userId ? `_user_${userId}` : '')
+          ); //  for invalidate cache privet routes with out id (private routes)
         }
 
-        return userId ? `${path}_user_${userId}` : path; // "user_" for invalidate cache fot uniq user (private routes)
+        if (
+          path.endsWith(
+            CACHE_INVALIDATE_KEY_FLAG.ALL_PATHS_ENDING_WITH_ID_ONLY_USER,
+          )
+        ) {
+          return (
+            path.slice(
+              0,
+              -CACHE_INVALIDATE_KEY_FLAG.ALL_PATHS_ENDING_WITH_ID_ONLY_USER
+                .length,
+            ) + (userId ? `${userId}` : '')
+          ); //  for invalidate cache ending with id (public or private routes)
+        }
       });
 
       await Promise.all(

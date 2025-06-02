@@ -381,7 +381,6 @@ export abstract class BaseAbstractRepository<
         .update(this.table)
         .set(data)
         .where(and(...conditions))
-
         .returning();
 
       if (!Array.isArray(result) || result.length === 0) {

@@ -9,6 +9,7 @@ import {
 import { UUID } from 'crypto';
 import { EventEmitter } from 'events';
 import { FastifyRequest } from 'fastify';
+import { GaxiosResponse } from 'gaxios';
 import { drive_v3, google } from 'googleapis';
 import { Observable } from 'rxjs';
 import { pipeline } from 'stream';
@@ -22,6 +23,7 @@ import { CreateFolderDto } from './dto/create-folder.dto';
 import { GoogleAuthDto } from './dto/google-auth.dto';
 import { FilesRepository } from './repository/files.repository';
 import { FoldersRepository } from './repository/folders.repository';
+import { emitterEventName } from './types/emitterEventName';
 import { File } from './types/file';
 import { FileUploadEvent, StatusUpload } from './types/file-upload-event';
 import { FileUploadResult } from './types/file-upload-result';
@@ -32,7 +34,7 @@ import { NameConflictChoice } from './types/upload-name-conflict';
 @Injectable()
 export class FilesSystemService {
   private driveService: drive_v3.Drive;
-  public readonly eventSource = new EventEmitter();
+  private readonly uploadEmitters = new Map<string, EventEmitter>();
   constructor(
     @Inject('UsersRepository')
     private readonly usersRepository: UsersRepository,
@@ -46,6 +48,7 @@ export class FilesSystemService {
 
   async createFile(
     currentUserId: UUID,
+    fileUploadId: string = '',
     request: FastifyRequest,
   ): Promise<FileUploadResult[]> {
     const pipelineAsync = promisify(pipeline);
@@ -56,9 +59,11 @@ export class FilesSystemService {
     let parentFolderGoogleDriveId: string | null = null;
     const uploadResults: FileUploadResult[] = [];
     let userWithRelatedEntity: UserWithRelatedEntity;
+    let about: GaxiosResponse;
     let user: User;
     let fileLoaded = false;
     let hasMoreFiles = false;
+    const [emitter, key] = this.getOrCreateEmitter(currentUserId, fileUploadId);
 
     try {
       userWithRelatedEntity =
@@ -77,13 +82,17 @@ export class FilesSystemService {
     }
     try {
       for (const account of user.googleServiceAccounts) {
-        const { clientEmail, privateKey, rootFolderId } = account;
+        const { clientEmail, privateKey, rootFolderId = null } = account;
 
         await this.authenticate({ clientEmail, privateKey });
 
-        const about = await this.driveService.about.get({
-          fields: 'storageQuota',
-        });
+        try {
+          about = await this.driveService.about.get({
+            fields: 'storageQuota',
+          });
+        } catch (error) {
+          continue;
+        }
 
         const storageQuota = about.data.storageQuota;
 
@@ -119,6 +128,7 @@ export class FilesSystemService {
                 conflictChoice = value as NameConflictChoice;
               }
             }
+
             if (part.fieldname === 'parentFolderId') {
               parentFolderId = String(part.value);
             }
@@ -132,6 +142,7 @@ export class FilesSystemService {
               hasMoreFiles = true;
               continue;
             }
+
             fileName = part.filename;
             mimeType = part.mimetype;
 
@@ -143,31 +154,36 @@ export class FilesSystemService {
             );
 
             let receivedBytes = 0;
-
+            let lastSentProgress = 0;
             part.file.on('data', (chunk) => {
               receivedBytes += chunk.length;
               const progress = Math.round((receivedBytes / fileSize) * 100);
-              this.eventSource.emit('upload-progress', {
-                fileName,
-                progress,
-                status: StatusUpload.UPLOADING,
-                error: null,
-              });
+              if (progress > lastSentProgress) {
+                lastSentProgress = progress;
+
+                emitter.emit(emitterEventName.UPLOAD_PROGRESS, {
+                  fileName,
+                  progress: receivedBytes,
+                  status: StatusUpload.UPLOADING,
+                  error: null,
+                });
+              }
             });
 
             part.file.on('end', () => {
-              this.eventSource.emit('upload-progress', {
+              emitter.emit(emitterEventName.UPLOAD_PROGRESS, {
                 fileName,
-                progress: 100,
-                status: StatusUpload.COMPLETE,
+                progress: receivedBytes,
+                status: StatusUpload.COMPLETED,
                 error: null,
               });
+              setTimeout(() => this.uploadEmitters.delete(key), 5000);
             });
 
             part.file.on('error', (err) => {
-              this.eventSource.emit('upload-progress', {
+              emitter.emit(emitterEventName.UPLOAD_PROGRESS, {
                 fileName,
-                progress: 0,
+                progress: receivedBytes,
                 status: StatusUpload.FAILED,
                 error: err.message,
               });
@@ -180,14 +196,16 @@ export class FilesSystemService {
                   mimeType: mimeType,
                   parents: parentFolderGoogleDriveId
                     ? [parentFolderGoogleDriveId]
-                    : ['root'],
+                    : rootFolderId
+                      ? [rootFolderId]
+                      : ['root'],
                   description,
                 },
                 media: {
                   body: stream,
                 },
                 fields:
-                  'id, webViewLink, webContentLink, size, createdTime, fileExtension',
+                  'id, webViewLink, webContentLink, size, createdTime, fileExtension, parents',
               });
 
               const file = await this.filesRepository.create({
@@ -200,9 +218,7 @@ export class FilesSystemService {
                 fileDescription: description,
                 parentFolderId,
                 fileGoogleDriveId: response.data.id,
-                fileGoogleDriveParentFolderId: parentFolderGoogleDriveId
-                  ? parentFolderGoogleDriveId
-                  : rootFolderId,
+                fileGoogleDriveParentFolderId: response.data.parents[0],
                 fileGoogleDriveClientEmail: clientEmail,
                 uploadDate: new Date(response.data.createdTime),
                 isPublic: parentFolderGoogleDriveId ? true : false,
@@ -215,7 +231,7 @@ export class FilesSystemService {
 
               uploadResults.push({
                 file,
-                status: StatusUpload.COMPLETE,
+                status: StatusUpload.COMPLETED,
                 account: clientEmail,
               });
             });
@@ -234,6 +250,7 @@ export class FilesSystemService {
           error: 'Only one file can be uploaded at a time',
         });
       }
+
       return uploadResults;
     } catch (error) {
       if (error instanceof BadRequestException) {
@@ -267,6 +284,7 @@ export class FilesSystemService {
       const userStats = await this.statsRepository.findAllByCondition({
         userId,
       });
+
       await this.statsRepository.updateByCondition(
         { userId },
         { folderCount: userStats[0].folderCount + 1 },
@@ -280,7 +298,7 @@ export class FilesSystemService {
 
   async findSlice(
     currentUserId: UUID,
-    parentFolderId?: string,
+    parentFolderId: string | null = null,
     offset?: number,
     limit?: number,
   ): Promise<(File | Folder)[]> {
@@ -437,28 +455,43 @@ export class FilesSystemService {
     });
   }
 
-  uploadProgress(request: FastifyRequest): Observable<MessageEvent> {
+  uploadProgress(
+    currentUserId: UUID,
+    fileUploadId: string = '',
+  ): Observable<MessageEvent> {
+    const [emitter] = this.getOrCreateEmitter(currentUserId, fileUploadId);
+
+    emitter.removeAllListeners(emitterEventName.UPLOAD_PROGRESS);
+
     return new Observable((observer) => {
-      this.eventSource.on('upload-progress', (progress: FileUploadEvent) => {
+      const handler = (progress: FileUploadEvent) => {
         switch (progress.status) {
           case StatusUpload.UPLOADING:
             observer.next({
               data: progress,
             } as MessageEvent);
             break;
-          case StatusUpload.COMPLETE:
+          case StatusUpload.COMPLETED:
             observer.next({
               data: progress,
             } as MessageEvent);
+            emitter.off(emitterEventName.UPLOAD_PROGRESS, handler);
             observer.complete();
             break;
           case StatusUpload.FAILED:
             observer.error({
               data: progress,
             } as MessageEvent);
+            emitter.off(emitterEventName.UPLOAD_PROGRESS, handler);
+            observer.complete();
             break;
         }
-      });
+      };
+      emitter.on(emitterEventName.UPLOAD_PROGRESS, handler);
+
+      return () => {
+        emitter.off(emitterEventName.UPLOAD_PROGRESS, handler);
+      };
     });
   }
   async authenticate(authDto: GoogleAuthDto): Promise<drive_v3.Drive> {
@@ -466,7 +499,7 @@ export class FilesSystemService {
       const auth = new google.auth.GoogleAuth({
         credentials: {
           client_email: authDto.clientEmail,
-          private_key: authDto.privateKey,
+          private_key: authDto.privateKey.replace(/\\n/g, '\n'),
         },
         scopes: ['https://www.googleapis.com/auth/drive'],
       });
@@ -562,5 +595,19 @@ export class FilesSystemService {
   }
   catch(error) {
     throw new Error(`Failed to handle file conflict: ${error.message}`);
+  }
+
+  private getOrCreateEmitter(
+    userId: string,
+    fileUploadId: string,
+  ): [EventEmitter, string] {
+    const key = `${userId}-${fileUploadId}`;
+    if (!this.uploadEmitters.has(key)) {
+      const emitter = new EventEmitter();
+
+      this.uploadEmitters.set(key, emitter);
+    }
+
+    return [this.uploadEmitters.get(key), key];
   }
 }

@@ -1,20 +1,31 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { File } from '@/domain/filesSystem/types/file';
 import { StatusUpload } from '@/domain/filesSystem/types/file-upload-event';
-import { FileUploadResult } from '@/domain/filesSystem/types/file-upload-result';
+import {
+  FileUploadCompleteResult,
+  FileUploadFailedResult,
+  FileUploadResult,
+} from '@/domain/filesSystem/types/file-upload-result';
 import { FileModel } from './file';
 
-export class FileUploadResultModel implements FileUploadResult {
-  @ApiPropertyOptional({ type: () => FileModel })
-  file?: File;
-  @ApiPropertyOptional()
-  fileName?: string;
+export class FileUploadCompleteModel implements FileUploadCompleteResult {
+  @ApiProperty({ type: () => FileModel })
+  file: File;
   @ApiProperty({
     enum: StatusUpload,
   })
-  status: StatusUpload;
-  @ApiPropertyOptional()
-  account?: string;
-  @ApiPropertyOptional()
-  error?: string;
+  status: StatusUpload.COMPLETED;
+  @ApiProperty()
+  account: string;
+}
+
+export class FileUploadFailedResultModel implements FileUploadFailedResult {
+  @ApiProperty()
+  fileName: string;
+  @ApiProperty({
+    enum: StatusUpload,
+  })
+  status: StatusUpload.FAILED;
+  @ApiProperty()
+  error: string;
 }

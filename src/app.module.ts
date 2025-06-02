@@ -1,10 +1,5 @@
 import { CacheModule } from '@nestjs/cache-manager';
-import {
-  ClassSerializerInterceptor,
-  MiddlewareConsumer,
-  Module,
-  RequestMethod,
-} from '@nestjs/common';
+import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR, Reflector } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';

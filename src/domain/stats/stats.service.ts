@@ -26,13 +26,14 @@ export class StatsService {
 
         const driveService = await this.filesSystemService.authenticate({
           clientEmail,
-          privateKey: privateKey.replace(/\\n/g, '\n'),
+          privateKey,
         });
 
         try {
           const about = await driveService.about.get({
             fields: 'storageQuota',
           });
+          console.log('about', about);
 
           const storageQuota = about.data.storageQuota;
 

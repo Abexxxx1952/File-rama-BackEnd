@@ -14,7 +14,10 @@ import { CreateFileArgs } from './types/create-file';
 import { CreateFilePermissionsArgs } from './types/create-file-permissions';
 import { CreateFolderArgs } from './types/create-folder';
 import { FileModel } from './types/file';
-import { FileUploadResultModel } from './types/file-upload-result';
+import {
+  FileUploadCompleteModel,
+  FileUploadFailedResultModel,
+} from './types/file-upload-result';
 import { FindFilesByConditionWithPaginationParamsArgs } from './types/find-files-by-string-condition';
 import { FolderModel } from './types/folder';
 import { UpdateFileArgs } from './types/update-file.dto';
@@ -277,10 +280,16 @@ export function ApiFilesSystemPostCreateFile() {
     ApiCookieAuth('access_token')(target, propertyKey, descriptor);
     ApiBearerAuth('authorization')(target, propertyKey, descriptor);
     ApiQuery({ type: CreateFileArgs })(target, propertyKey, descriptor);
+    ApiExtraModels(FileUploadCompleteModel, FileUploadFailedResultModel);
     ApiResponse({
       status: 201,
       description: 'File was created',
-      type: [FileUploadResultModel],
+      schema: {
+        oneOf: [
+          { $ref: getSchemaPath(FileUploadCompleteModel) },
+          { $ref: getSchemaPath(FileUploadFailedResultModel) },
+        ],
+      },
     })(target, propertyKey, descriptor);
     ApiResponse({
       status: 400,

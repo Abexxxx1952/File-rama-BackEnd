@@ -1,4 +1,3 @@
-import { CacheInterceptor } from '@nestjs/cache-manager';
 import {
   Body,
   Controller,
@@ -13,6 +12,7 @@ import {
   Post,
   Query,
   Req,
+  Res,
   Sse,
   UseGuards,
   UseInterceptors,
@@ -23,6 +23,7 @@ import { FastifyRequest } from 'fastify';
 import { Observable } from 'rxjs';
 import { CurrentUser } from '@/common/decorators/currentUser.decorator';
 import {
+  CacheInterceptor,
   CacheOptionInvalidateCache,
   CacheOptions,
 } from '@/common/interceptors/cache.interceptor';
@@ -73,8 +74,8 @@ export class FilesController {
   ) {}
 
   @Get('findAll')
-  @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
+  @HttpCode(HttpStatus.OK)
   @UseInterceptors(CacheInterceptor)
   @ApiFilesSystemGet()
   async findSlice(
@@ -145,7 +146,7 @@ export class FilesController {
     );
   }
 
-  @Post('createFile')
+  @Post('createFile/:fileUploadId')
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
   @CacheOptionInvalidateCache({
@@ -156,9 +157,14 @@ export class FilesController {
   @ApiFilesSystemPostCreateFile()
   async createFile(
     @CurrentUser('id') currentUserId: UUID,
+    @Param('fileUploadId') fileUploadId: string,
     @Req() request: FastifyRequest,
   ): Promise<FileUploadResult[]> {
-    return await this.filesSystemService.createFile(currentUserId, request);
+    return await this.filesSystemService.createFile(
+      currentUserId,
+      fileUploadId,
+      request,
+    );
   }
 
   @Post('createFolder')
@@ -285,8 +291,12 @@ export class FilesController {
     return await this.foldersRepository.deleteFolder(currentUserId, folderId);
   }
 
-  @Sse('uploadProgress')
-  sse(@Req() request: FastifyRequest): Observable<MessageEvent> {
-    return this.filesSystemService.uploadProgress(request);
+  @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
+  @Sse('uploadProgress/:fileUploadId')
+  sse(
+    @CurrentUser('id') currentUserId: UUID,
+    @Param('fileUploadId') fileUploadId: string,
+  ): Observable<MessageEvent> {
+    return this.filesSystemService.uploadProgress(currentUserId, fileUploadId);
   }
 }

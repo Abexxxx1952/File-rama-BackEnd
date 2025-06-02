@@ -6,10 +6,9 @@ import { DATABASE_CONNECTION } from '@/database/database.module';
 import { StatsRepository } from '@/domain/stats/repository/stats.repository';
 import { UsersRepository } from '@/domain/users/repository/users.repository';
 import { UserWithRelatedEntity } from '@/domain/users/types/user-with-related-entity';
-import { CreateFolderDto } from '../dto/create-folder.dto';
 import { UpdateFolderDto } from '../dto/update-folder.dto';
-import { FilesSystemService } from '../filesSystem.service';
 import { foldersSchema } from '../schema/folder.schema';
+import { File } from '../types/file';
 import { Folder } from '../types/folder';
 import { FilesRepository } from './files.repository';
 
@@ -39,10 +38,12 @@ export class FoldersRepository extends BaseAbstractRepository<
   ): Promise<Folder> {
     const { folderId, ...rest } = updateFolderDto;
     try {
-      return await this.updateByCondition(
+      const result = await this.updateByCondition(
         { id: folderId, userId: currentUserId },
         rest,
-      )[0];
+      );
+
+      return result[0];
     } catch (error) {
       throw error;
     }
@@ -86,26 +87,46 @@ export class FoldersRepository extends BaseAbstractRepository<
     currentUserId: UUID,
     folderId: string,
   ): Promise<Folder> {
+    let files: File[];
+    let subFolders: Folder[];
+
     try {
-      const files = await this.filesRepository.findAllByCondition({
-        userId: currentUserId,
-        parentFolderId: folderId,
-      });
+      try {
+        files = await this.filesRepository.findAllByCondition({
+          userId: currentUserId,
+          parentFolderId: folderId,
+        });
+      } catch (error) {
+        if (error instanceof NotFoundException) {
+          files = [];
+        } else {
+          throw error;
+        }
+      }
 
       for (const file of files) {
         await this.filesRepository.deleteById(file.id);
       }
 
-      const subFolders = await this.findAllByCondition({
-        userId: currentUserId,
-        parentFolderId: folderId,
-      });
+      try {
+        subFolders = await this.findAllByCondition({
+          userId: currentUserId,
+          parentFolderId: folderId,
+        });
+      } catch (error) {
+        if (error instanceof NotFoundException) {
+          subFolders = [];
+        } else {
+          throw error;
+        }
+      }
 
       const folder = await this.deleteById(folderId);
 
       for (const subFolder of subFolders) {
         await this.deleteFolderRecursively(currentUserId, subFolder.id);
       }
+
       return folder;
     } catch (error) {
       throw error;

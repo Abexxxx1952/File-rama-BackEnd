@@ -1,7 +1,7 @@
 export enum StatusUpload {
   FAILED = 'FAILED',
   UPLOADING = 'UPLOADING',
-  COMPLETE = 'COMPLETED',
+  COMPLETED = 'COMPLETED',
 }
 
 export class FileUploadEvent {
