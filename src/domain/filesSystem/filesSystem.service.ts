@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { UUID } from 'crypto';
 import { EventEmitter } from 'events';
-import { FastifyRequest } from 'fastify';
+import { FastifyReply, FastifyRequest } from 'fastify';
 import { GaxiosResponse } from 'gaxios';
 import { drive_v3, google } from 'googleapis';
 import { Observable } from 'rxjs';
@@ -21,6 +21,7 @@ import { User } from '../users/types/users';
 import { CreateFilePermissionsDto } from './dto/create-file-permissions';
 import { CreateFolderDto } from './dto/create-folder.dto';
 import { GoogleAuthDto } from './dto/google-auth.dto';
+import { UpdateFileDto } from './dto/update-file.dto';
 import { FilesRepository } from './repository/files.repository';
 import { FoldersRepository } from './repository/folders.repository';
 import { emitterEventName } from './types/emitterEventName';
@@ -296,6 +297,69 @@ export class FilesSystemService {
     }
   }
 
+  async downloadFile(
+    currentUserId: UUID,
+    fileId: UUID,
+    res: FastifyReply,
+  ): Promise<never> {
+    try {
+      const userWithRelatedEntity =
+        await this.usersRepository.findOneByConditionWithRelations<UserWithRelatedEntity>(
+          { id: currentUserId },
+          ['files'],
+        );
+
+      const file = userWithRelatedEntity.files.find(
+        (file) => file.id === fileId,
+      );
+
+      if (!file) {
+        throw new NotFoundException("File doesn't exist");
+      }
+      const user = userWithRelatedEntity.users[0];
+
+      const account = user.googleServiceAccounts.find((account) => {
+        return account.clientEmail === file.fileGoogleDriveClientEmail;
+      });
+
+      const { clientEmail, privateKey } = account;
+
+      await this.authenticate({ clientEmail, privateKey });
+
+      const meta = await this.driveService.files.get({
+        fileId: file.fileGoogleDriveId,
+        fields: 'name, mimeType',
+      });
+
+      if (!meta.data.name) {
+        throw new NotFoundException('File not found');
+      }
+
+      const fileName = meta.data.name;
+      const mimeType = meta.data.mimeType || 'application/octet-stream';
+
+      const fileStream = await this.driveService.files.get(
+        {
+          fileId: file.fileGoogleDriveId,
+          alt: 'media',
+        },
+        { responseType: 'stream' },
+      );
+
+      res.header('Content-Type', mimeType);
+      res.header(
+        'Content-Disposition',
+        `attachment; filename="${encodeURIComponent(fileName)}"`,
+      );
+      res.header('Content-Length', fileStream.headers['content-length']);
+      res.header('Access-Control-Expose-Headers', 'Content-Disposition');
+
+      return res.send(fileStream.data);
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async findSlice(
     currentUserId: UUID,
     parentFolderId: string | null = null,
@@ -333,6 +397,63 @@ export class FilesSystemService {
     return foldersAndFiles.slice(start, end);
   }
 
+  async updateFile(
+    currentUserId: UUID,
+    fileUpdateDto: UpdateFileDto,
+  ): Promise<File> {
+    try {
+      const userWithRelatedEntity =
+        await this.usersRepository.findOneByConditionWithRelations<UserWithRelatedEntity>(
+          { id: currentUserId },
+          ['files'],
+        );
+
+      const file = userWithRelatedEntity.files.find(
+        (file) => file.id === fileUpdateDto.fileId,
+      );
+
+      if (!file) {
+        throw new NotFoundException("File doesn't exist");
+      }
+
+      const user = userWithRelatedEntity.users[0];
+
+      const account = user.googleServiceAccounts.find((account) => {
+        return account.clientEmail === file.fileGoogleDriveClientEmail;
+      });
+
+      const { clientEmail, privateKey } = account;
+
+      await this.authenticate({ clientEmail, privateKey });
+
+      const requestBody: drive_v3.Schema$File = {};
+
+      if (fileUpdateDto.fileName) {
+        requestBody.name = fileUpdateDto.fileName;
+      }
+
+      if (fileUpdateDto.fileDescription) {
+        requestBody.description = fileUpdateDto.fileDescription;
+      }
+
+      const response = await this.driveService.files.update({
+        fileId: file.fileGoogleDriveId,
+        requestBody,
+      });
+
+      if (response.status === 204 || response.status === 200) {
+        const updatedFile = await this.filesRepository.updateFile(
+          currentUserId,
+          fileUpdateDto,
+        );
+
+        return updatedFile;
+      }
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async deleteFile(currentUserId: UUID, fileId: string): Promise<File> {
     try {
       const userWithRelatedEntity =
@@ -351,9 +472,11 @@ export class FilesSystemService {
 
       const user = userWithRelatedEntity.users[0];
       const stats = userWithRelatedEntity.stats[0];
+
       const account = user.googleServiceAccounts.find((account) => {
-        account.clientEmail === file.fileGoogleDriveClientEmail;
+        return account.clientEmail === file.fileGoogleDriveClientEmail;
       });
+
       const { clientEmail, privateKey } = account;
 
       await this.authenticate({ clientEmail, privateKey });

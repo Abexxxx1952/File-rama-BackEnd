@@ -12,11 +12,6 @@ export class UpdateFileDto {
   readonly fileName?: string;
 
   @IsOptional()
-  @IsString()
-  @IsNotEmpty()
-  readonly fileExtension?: string;
-
-  @IsOptional()
   @IsUUID()
   @IsNotEmpty()
   readonly parentFolderId?: UUID;

@@ -39,12 +39,18 @@ export class FilesRepository extends BaseAbstractRepository<
     currentUserId: UUID,
     updateFileDto: UpdateFileDto,
   ): Promise<File> {
-    const { fileId, ...rest } = updateFileDto;
+    const { fileId, fileName, ...rest } = updateFileDto;
+    let fileExtension = '';
+
+    if (fileName) fileExtension = fileName.split('.').pop();
+
     try {
-      return await this.updateByCondition(
+      const result = await this.updateByCondition(
         { id: fileId, userId: currentUserId },
-        rest,
-      )[0];
+        { fileName, fileExtension, ...rest },
+      );
+
+      return result[0];
     } catch (error) {
       throw error;
     }

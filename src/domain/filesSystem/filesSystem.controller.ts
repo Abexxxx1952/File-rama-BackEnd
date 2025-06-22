@@ -18,8 +18,9 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { UUID } from 'crypto';
-import { FastifyRequest } from 'fastify';
+import { FastifyReply, FastifyRequest } from 'fastify';
 import { Observable } from 'rxjs';
 import { CurrentUser } from '@/common/decorators/currentUser.decorator';
 import {
@@ -146,6 +147,22 @@ export class FilesController {
     );
   }
 
+  @Get('download/:fileId')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
+  @ApiFilesSystemGetFindPublicFiles()
+  async downloadFile(
+    @CurrentUser('id') currentUserId: UUID,
+    @Param('fileId', ParseUUIDPipe) fileId: UUID,
+    @Res({ passthrough: false }) res: FastifyReply,
+  ): Promise<never> {
+    return await this.filesSystemService.downloadFile(
+      currentUserId,
+      fileId,
+      res,
+    );
+  }
+
   @Post('createFile/:fileUploadId')
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
@@ -237,7 +254,10 @@ export class FilesController {
     @CurrentUser('id') currentUserId: UUID,
     @Body() updateFileDto: UpdateFileDto,
   ): Promise<File> {
-    return await this.filesRepository.updateFile(currentUserId, updateFileDto);
+    return await this.filesSystemService.updateFile(
+      currentUserId,
+      updateFileDto,
+    );
   }
 
   @Patch('updateFolder')
@@ -292,6 +312,7 @@ export class FilesController {
   }
 
   @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
+  @Throttle({ default: { limit: 20, ttl: 10000 } })
   @Sse('uploadProgress/:fileUploadId')
   sse(
     @CurrentUser('id') currentUserId: UUID,
