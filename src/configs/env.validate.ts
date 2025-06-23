@@ -136,6 +136,11 @@ class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   MAIL_PORT: string;
+
+  @IsNumber()
+  @IsNotEmpty()
+  @Transform(({ value }) => parseInt(value))
+  MAX_UPLOADS_PER_USER: number;
 }
 
 export function validate(config: Record<string, unknown>) {

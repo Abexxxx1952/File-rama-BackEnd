@@ -8,17 +8,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { plainToClass } from 'class-transformer';
-import { validateOrReject } from 'class-validator';
 import { UUID } from 'crypto';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { BaseAbstractRepository } from '@/database/abstractRepository/base.abstract.repository';
+import { DATABASE_CONNECTION } from '@/database/database.module';
 import { filesSchema } from '@/domain/filesSystem/schema/files.schema';
 import { foldersSchema } from '@/domain/filesSystem/schema/folder.schema';
 import { StatsRepository } from '@/domain/stats/repository/stats.repository';
 import { statsSchema } from '@/domain/stats/schema/stats.schema';
 import { Stat } from '@/domain/stats/types/stat';
-import { BaseAbstractRepository } from '../../../database/abstractRepository/base.abstract.repository';
-import { DATABASE_CONNECTION } from '../../../database/database.module';
 import { CreateUserLocalDto } from '../auth/dto/register-local.dto';
 import { EmailConfirmationService } from '../auth/email-confirmation/email-confirmation.service';
 import { ParseUserOAuth } from '../auth/types/parse-user-oauth';

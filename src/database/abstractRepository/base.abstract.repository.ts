@@ -47,7 +47,7 @@ export abstract class BaseAbstractRepository<
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new InternalServerErrorException(error.message);
+      throw new InternalServerErrorException(error.message, { cause: error });
     }
   }
 
@@ -72,7 +72,7 @@ export abstract class BaseAbstractRepository<
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new InternalServerErrorException(error.message);
+      throw new InternalServerErrorException(error.message, { cause: error });
     }
   }
 
@@ -98,7 +98,7 @@ export abstract class BaseAbstractRepository<
       if (error instanceof NotFoundException) {
         throw error;
       }
-      throw new InternalServerErrorException(error.message);
+      throw new InternalServerErrorException(error.message, { cause: error });
     }
   }
 
@@ -145,7 +145,7 @@ export abstract class BaseAbstractRepository<
       if (error instanceof NotFoundException) {
         throw error;
       }
-      throw new InternalServerErrorException(error.message);
+      throw new InternalServerErrorException(error.message, { cause: error });
     }
   }
 
@@ -184,7 +184,7 @@ export abstract class BaseAbstractRepository<
         throw error;
       }
 
-      throw new InternalServerErrorException(error.message);
+      throw new InternalServerErrorException(error.message, { cause: error });
     }
   }
 
@@ -240,7 +240,7 @@ export abstract class BaseAbstractRepository<
         throw error;
       }
 
-      throw new InternalServerErrorException(error.message);
+      throw new InternalServerErrorException(error.message, { cause: error });
     }
   }
 
@@ -292,7 +292,7 @@ export abstract class BaseAbstractRepository<
       ) {
         throw error;
       }
-      throw new InternalServerErrorException(error.message);
+      throw new InternalServerErrorException(error.message, { cause: error });
     }
   }
 
@@ -323,7 +323,7 @@ export abstract class BaseAbstractRepository<
       if (error instanceof NotFoundException) {
         throw error;
       }
-      throw new InternalServerErrorException(error.message);
+      throw new InternalServerErrorException(error.message, { cause: error });
     }
   }
 
@@ -353,7 +353,7 @@ export abstract class BaseAbstractRepository<
       if (error instanceof NotFoundException) {
         throw error;
       }
-      throw new InternalServerErrorException(error.message);
+      throw new InternalServerErrorException(error.message, { cause: error });
     }
   }
 
@@ -395,7 +395,7 @@ export abstract class BaseAbstractRepository<
       ) {
         throw error;
       }
-      throw new InternalServerErrorException(error.message);
+      throw new InternalServerErrorException(error.message, { cause: error });
     }
   }
 
@@ -420,7 +420,7 @@ export abstract class BaseAbstractRepository<
       if (error instanceof NotFoundException) {
         throw error;
       }
-      throw new InternalServerErrorException(error.message);
+      throw new InternalServerErrorException(error.message, { cause: error });
     }
   }
 
@@ -454,7 +454,7 @@ export abstract class BaseAbstractRepository<
       if (error instanceof NotFoundException) {
         throw error;
       }
-      throw new InternalServerErrorException(error.message);
+      throw new InternalServerErrorException(error.message, { cause: error });
     }
   }
 

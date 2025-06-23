@@ -6,6 +6,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { UUID } from 'crypto';
 import { EventEmitter } from 'events';
 import { FastifyReply, FastifyRequest } from 'fastify';
@@ -36,7 +37,12 @@ import { NameConflictChoice } from './types/upload-name-conflict';
 export class FilesSystemService {
   private driveService: drive_v3.Drive;
   private readonly uploadEmitters = new Map<string, EventEmitter>();
+  private activeUploads = new Map<string, number>();
+  private readonly maxUploadsPerUser = this.configService.getOrThrow<number>(
+    'MAX_UPLOADS_PER_USER',
+  );
   constructor(
+    private readonly configService: ConfigService,
     @Inject('UsersRepository')
     private readonly usersRepository: UsersRepository,
     @Inject('FilesRepository')
@@ -81,6 +87,13 @@ export class FilesSystemService {
     if (!user.isVerified) {
       throw new ForbiddenException('User must be verified');
     }
+
+    const allowed = this.startUpload(currentUserId);
+
+    if (!allowed) {
+      throw new BadRequestException('Parallel download limit exceeded');
+    }
+
     try {
       for (const account of user.googleServiceAccounts) {
         const { clientEmail, privateKey, rootFolderId = null } = account;
@@ -262,6 +275,8 @@ export class FilesSystemService {
         throw new BadRequestException(error.errors[0].message);
       }
       throw error;
+    } finally {
+      this.finishUpload(currentUserId);
     }
   }
 
@@ -732,5 +747,24 @@ export class FilesSystemService {
     }
 
     return [this.uploadEmitters.get(key), key];
+  }
+
+  private startUpload(userId: string): boolean {
+    const current = this.activeUploads.get(userId) || 0;
+
+    if (current >= this.maxUploadsPerUser) {
+      return false;
+    }
+
+    this.activeUploads.set(userId, current + 1);
+    return true;
+  }
+
+  private finishUpload(userId: string) {
+    const current = this.activeUploads.get(userId) || 0;
+    if (current <= 1) {
+      this.activeUploads.delete(userId);
+    }
+    this.activeUploads.set(userId, current - 1);
   }
 }
