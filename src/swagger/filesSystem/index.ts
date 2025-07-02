@@ -13,11 +13,17 @@ import { PaginationParamsArgs } from '../types/paginationParams';
 import { CreateFileArgs } from './types/create-file';
 import { CreateFilePermissionsArgs } from './types/create-file-permissions';
 import { CreateFolderArgs } from './types/create-folder';
+import { DeleteFileArgs } from './types/delete-file.dto';
+import { DeleteFolderArgs } from './types/delete-folder.dto';
 import { FileModel } from './types/file';
 import {
   FileUploadCompleteModel,
   FileUploadFailedResultModel,
 } from './types/file-upload-result';
+import {
+  FileChangeResultModel,
+  FolderChangeResultModel,
+} from './types/fileSystemItem-change-result';
 import { FindFilesByConditionWithPaginationParamsArgs } from './types/find-files-by-string-condition';
 import { FolderModel } from './types/folder';
 import { UpdateFileArgs } from './types/update-file.dto';
@@ -504,6 +510,62 @@ export function ApiFilesSystemPatchUpdateFolder() {
   };
 }
 
+export function ApiFilesSystemPatchUpdateMany() {
+  return function (
+    target: any,
+    propertyKey: string,
+    descriptor: PropertyDescriptor,
+  ) {
+    ApiOperation({
+      summary: 'Update many files and/or folders. (AccessToken required)',
+    })(target, propertyKey, descriptor);
+    ApiCookieAuth('access_token')(target, propertyKey, descriptor);
+    ApiBearerAuth('authorization')(target, propertyKey, descriptor);
+    ApiExtraModels(UpdateFileArgs, UpdateFolderArgs);
+    ApiBody({
+      schema: {
+        type: 'array',
+        items: {
+          oneOf: [
+            { $ref: getSchemaPath(UpdateFileArgs) },
+            { $ref: getSchemaPath(UpdateFolderArgs) },
+          ],
+        },
+      },
+    })(target, propertyKey, descriptor);
+    ApiExtraModels(FileChangeResultModel, FolderChangeResultModel);
+    ApiResponse({
+      status: 200,
+      description: 'Files and/or folders updates successfully',
+      schema: {
+        type: 'array',
+        items: {
+          oneOf: [
+            { $ref: getSchemaPath(FileChangeResultModel) },
+            { $ref: getSchemaPath(FolderChangeResultModel) },
+          ],
+        },
+      },
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 400,
+      description: 'Bad Request',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 401,
+      description: 'Unauthorized',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 429,
+      description: 'ThrottlerException: Too Many Requests',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 500,
+      description: 'Internal Server Error',
+    })(target, propertyKey, descriptor);
+  };
+}
+
 export function ApiFilesSystemDeleteDeleteFile() {
   return function (
     target: any,
@@ -515,6 +577,9 @@ export function ApiFilesSystemDeleteDeleteFile() {
     })(target, propertyKey, descriptor);
     ApiCookieAuth('access_token')(target, propertyKey, descriptor);
     ApiBearerAuth('authorization')(target, propertyKey, descriptor);
+    ApiBody({
+      type: DeleteFileArgs,
+    })(target, propertyKey, descriptor);
     ApiResponse({
       status: 200,
       description: 'File deleted',
@@ -550,10 +615,69 @@ export function ApiFilesSystemDeleteDeleteFolder() {
     })(target, propertyKey, descriptor);
     ApiCookieAuth('access_token')(target, propertyKey, descriptor);
     ApiBearerAuth('authorization')(target, propertyKey, descriptor);
+    ApiBody({
+      type: DeleteFolderArgs,
+    })(target, propertyKey, descriptor);
     ApiResponse({
       status: 200,
       description: 'File deleted',
       type: FolderModel,
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 401,
+      description: 'Unauthorized',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 403,
+      description: 'Forbidden',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 429,
+      description: 'ThrottlerException: Too Many Requests',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 500,
+      description: 'Internal Server Error',
+    })(target, propertyKey, descriptor);
+  };
+}
+
+export function ApiFilesSystemDeleteDeleteMany() {
+  return function (
+    target: any,
+    propertyKey: string,
+    descriptor: PropertyDescriptor,
+  ) {
+    ApiOperation({
+      summary: 'Delete many files and/or folders. (AccessToken required)',
+    })(target, propertyKey, descriptor);
+    ApiCookieAuth('access_token')(target, propertyKey, descriptor);
+    ApiBearerAuth('authorization')(target, propertyKey, descriptor);
+    ApiExtraModels(DeleteFileArgs, DeleteFolderArgs);
+    ApiBody({
+      schema: {
+        type: 'array',
+        items: {
+          oneOf: [
+            { $ref: getSchemaPath(DeleteFileArgs) },
+            { $ref: getSchemaPath(DeleteFolderArgs) },
+          ],
+        },
+      },
+    })(target, propertyKey, descriptor);
+    ApiExtraModels(FileChangeResultModel, FolderChangeResultModel);
+    ApiResponse({
+      status: 200,
+      description: 'Files and/or folders deleted successfully',
+      schema: {
+        type: 'array',
+        items: {
+          oneOf: [
+            { $ref: getSchemaPath(FileChangeResultModel) },
+            { $ref: getSchemaPath(FolderChangeResultModel) },
+          ],
+        },
+      },
     })(target, propertyKey, descriptor);
     ApiResponse({
       status: 401,

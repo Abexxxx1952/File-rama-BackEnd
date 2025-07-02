@@ -23,13 +23,18 @@ import { CreateFilePermissionsDto } from './dto/create-file-permissions';
 import { CreateFolderDto } from './dto/create-folder.dto';
 import { GoogleAuthDto } from './dto/google-auth.dto';
 import { UpdateFileDto } from './dto/update-file.dto';
+import { UpdateFolderDto } from './dto/update-folder.dto';
+import { UpdateManyDto } from './dto/update-many.dto';
 import { FilesRepository } from './repository/files.repository';
 import { FoldersRepository } from './repository/folders.repository';
+import { DeleteFolderRecursivelyResult } from './types/delete-folder-recursively-result';
+import { DeleteMany } from './types/delete-many-params';
 import { emitterEventName } from './types/emitterEventName';
 import { File } from './types/file';
-import { FileUploadEvent, StatusUpload } from './types/file-upload-event';
+import { FileUploadEvent, UploadStatus } from './types/file-upload-event';
 import { FileUploadResult } from './types/file-upload-result';
 import { FileWithRelatedEntity } from './types/file-with-related-entity';
+import { FileSystemItemChangeResult } from './types/fileSystemItem-change-result';
 import { Folder } from './types/folder';
 import { NameConflictChoice } from './types/upload-name-conflict';
 
@@ -160,8 +165,7 @@ export class FilesSystemService {
             fileName = part.filename;
             mimeType = part.mimetype;
 
-            fileName = await this.handleNameConflict(
-              'file',
+            fileName = await this.handleFileNameConflict(
               parentFolderId,
               fileName,
               conflictChoice,
@@ -178,7 +182,7 @@ export class FilesSystemService {
                 emitter.emit(emitterEventName.UPLOAD_PROGRESS, {
                   fileName,
                   progress: receivedBytes,
-                  status: StatusUpload.UPLOADING,
+                  status: UploadStatus.UPLOADING,
                   error: null,
                 });
               }
@@ -188,7 +192,7 @@ export class FilesSystemService {
               emitter.emit(emitterEventName.UPLOAD_PROGRESS, {
                 fileName,
                 progress: receivedBytes,
-                status: StatusUpload.COMPLETED,
+                status: UploadStatus.COMPLETED,
                 error: null,
               });
               setTimeout(() => this.uploadEmitters.delete(key), 5000);
@@ -198,7 +202,7 @@ export class FilesSystemService {
               emitter.emit(emitterEventName.UPLOAD_PROGRESS, {
                 fileName,
                 progress: receivedBytes,
-                status: StatusUpload.FAILED,
+                status: UploadStatus.FAILED,
                 error: err.message,
               });
             });
@@ -245,7 +249,7 @@ export class FilesSystemService {
 
               uploadResults.push({
                 file,
-                status: StatusUpload.COMPLETED,
+                status: UploadStatus.COMPLETED,
                 account: clientEmail,
               });
             });
@@ -260,7 +264,7 @@ export class FilesSystemService {
       if (hasMoreFiles) {
         uploadResults.push({
           fileName: 'Others files',
-          status: StatusUpload.FAILED,
+          status: UploadStatus.FAILED,
           error: 'Only one file can be uploaded at a time',
         });
       }
@@ -268,7 +272,7 @@ export class FilesSystemService {
       return uploadResults;
     } catch (error) {
       if (error instanceof BadRequestException) {
-        error.message = `Status: ${StatusUpload.FAILED} error: ${error.message}`;
+        error.message = `Status: ${UploadStatus.FAILED} error: ${error.message}`;
         throw new BadRequestException(error.message);
       }
       if (error.errors[0].message) {
@@ -285,16 +289,15 @@ export class FilesSystemService {
     createfolderDto: CreateFolderDto,
   ): Promise<Folder> {
     try {
-      const folderName = await this.handleNameConflict(
-        'folder',
+      const folderName = await this.handleFolderNameConflict(
         createfolderDto.parentFolderId,
         createfolderDto.folderName,
       );
 
       const folder = await this.foldersRepository.create({
         folderName,
-        userId: userId,
-        parentFolderId: createfolderDto.parentFolderId,
+        userId,
+        parentFolderId: createfolderDto.parentFolderId || null,
       });
 
       const userStats = await this.statsRepository.findAllByCondition({
@@ -469,6 +472,182 @@ export class FilesSystemService {
     }
   }
 
+  async updateMany(
+    currentUserId: UUID,
+    updateManyDto: UpdateManyDto[],
+  ): Promise<FileSystemItemChangeResult[]> {
+    const result: FileSystemItemChangeResult[] = [];
+    try {
+      const userWithRelatedEntity =
+        await this.usersRepository.findOneByConditionWithRelations<UserWithRelatedEntity>(
+          { id: currentUserId },
+          ['files', 'folders'],
+        );
+      const files: Map<
+        string,
+        (UpdateFileDto & {
+          fileGoogleDriveClientEmail: string;
+          fileGoogleDriveId: string;
+        })[]
+      > = new Map();
+
+      const folders: UpdateFolderDto[] = [];
+      const filesToUpdateFromDB: {
+        id: string | number | UUID;
+        data: Partial<File>;
+      }[] = [];
+
+      updateManyDto.forEach((fileSystemItemToUpdate) => {
+        let coincidence = false;
+        if ('fileId' in fileSystemItemToUpdate) {
+          const existFile = userWithRelatedEntity.files.find((file) => {
+            return file.id === fileSystemItemToUpdate.fileId;
+          });
+          if (existFile) {
+            const mapValue = files.get(existFile.fileGoogleDriveClientEmail)
+              ? files.get(existFile.fileGoogleDriveClientEmail).concat({
+                  ...fileSystemItemToUpdate,
+                  fileGoogleDriveClientEmail:
+                    existFile.fileGoogleDriveClientEmail,
+                  fileGoogleDriveId: existFile.fileGoogleDriveId,
+                })
+              : [
+                  {
+                    ...fileSystemItemToUpdate,
+                    fileGoogleDriveClientEmail:
+                      existFile.fileGoogleDriveClientEmail,
+                    fileGoogleDriveId: existFile.fileGoogleDriveId,
+                  },
+                ];
+            files.set(existFile.fileGoogleDriveClientEmail, mapValue);
+
+            coincidence = true;
+          }
+        }
+        if ('folderId' in fileSystemItemToUpdate) {
+          const existFolder = userWithRelatedEntity.folders.find((folder) => {
+            return folder.id === fileSystemItemToUpdate.folderId;
+          });
+          if (existFolder) {
+            folders.push(fileSystemItemToUpdate);
+            coincidence = true;
+          }
+        }
+        if (!coincidence) {
+          if ('fileId' in fileSystemItemToUpdate) {
+            result.push({
+              fileId: fileSystemItemToUpdate.fileId,
+              status: 'error',
+            });
+          }
+          if ('folderId' in fileSystemItemToUpdate) {
+            result.push({
+              folderId: fileSystemItemToUpdate.folderId,
+              status: 'error',
+            });
+          }
+        }
+      });
+
+      const user = userWithRelatedEntity.users[0];
+      if (files.size > 0) {
+        for (const [key, value] of files) {
+          let executeUpdateFiles: Promise<void>[];
+          const account = user.googleServiceAccounts.find((account) => {
+            return account.clientEmail === key;
+          });
+          const { clientEmail, privateKey } = account;
+          await this.authenticate({ clientEmail, privateKey });
+          executeUpdateFiles = value.map(async (fileToUpdate) => {
+            try {
+              const requestBody: drive_v3.Schema$File = {};
+
+              if (fileToUpdate.fileName) {
+                requestBody.name = fileToUpdate.fileName;
+              }
+
+              if (fileToUpdate.fileDescription) {
+                requestBody.description = fileToUpdate.fileDescription;
+              }
+
+              const response = await this.driveService.files.update({
+                fileId: fileToUpdate.fileGoogleDriveId,
+                requestBody,
+              });
+
+              if (response.status === 204 || response.status === 200) {
+                const {
+                  fileGoogleDriveClientEmail,
+                  fileGoogleDriveId,
+                  fileId,
+                  ...rest
+                } = fileToUpdate;
+                filesToUpdateFromDB.push({
+                  id: fileToUpdate.fileId,
+                  data: rest,
+                });
+              }
+            } catch (error) {
+              result.push({
+                fileId: fileToUpdate.fileId,
+                status: 'error',
+              });
+            }
+          });
+          await Promise.allSettled(executeUpdateFiles);
+        }
+      }
+
+      const updatesFiles =
+        await this.filesRepository.updateManyById(filesToUpdateFromDB);
+      updatesFiles.forEach((updatesFile) => {
+        result.push({
+          fileId: updatesFile.id,
+          status: 'success',
+        });
+      });
+
+      if (folders.length > 0) {
+        const foldersToUpdateFromDB: {
+          id: string | number | UUID;
+          data: Partial<Folder>;
+        }[] = folders.map((folderToUpdate) => {
+          const { folderId, ...rest } = folderToUpdate;
+          return {
+            id: folderId,
+            data: rest,
+          };
+        });
+        const updatedFolder = await this.foldersRepository.updateManyById(
+          foldersToUpdateFromDB,
+        );
+        updatedFolder.forEach((folder) => {
+          result.push({
+            folderId: folder.id,
+            status: 'success',
+          });
+        });
+        if (updatedFolder.length < folders.length) {
+          folders.forEach(({ folderId }) => {
+            const deletedFolder = updatedFolder.some((deletedFolder) => {
+              deletedFolder.id === folderId;
+            });
+
+            if (!deletedFolder) {
+              result.push({
+                folderId: folderId,
+                status: 'error',
+              });
+            }
+          });
+        }
+      }
+      return result;
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async deleteFile(currentUserId: UUID, fileId: string): Promise<File> {
     try {
       const userWithRelatedEntity =
@@ -507,6 +686,214 @@ export class FilesSystemService {
         );
         return await this.filesRepository.deleteById(file.id);
       }
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async deleteFolder(
+    currentUserId: UUID,
+    folderId: UUID,
+  ): Promise<FileSystemItemChangeResult[]> {
+    try {
+      const userWithRelatedEntity =
+        await this.usersRepository.findOneByConditionWithRelations<UserWithRelatedEntity>(
+          { id: currentUserId },
+          ['folders', 'stats'],
+        );
+
+      const folder = userWithRelatedEntity.folders.find(
+        (folder) => folder.id === folderId,
+      );
+
+      if (!folder) {
+        throw new NotFoundException("Folder doesn't exist");
+      }
+
+      const userStat = userWithRelatedEntity.stats[0];
+
+      const result = await this.deleteFolderRecursively(
+        currentUserId,
+        folderId,
+        userWithRelatedEntity.users[0].googleServiceAccounts,
+      );
+
+      await this.statsRepository.updateByCondition(
+        { userId: currentUserId },
+        {
+          folderCount: userStat.folderCount - result.deletedFoldersAll.length,
+          fileCount: userStat.fileCount - result.deletedFilesAll.length,
+        },
+      );
+
+      return result.result;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async deleteMany(
+    currentUserId: UUID,
+    deleteManyDto: DeleteMany,
+  ): Promise<FileSystemItemChangeResult[]> {
+    let result: FileSystemItemChangeResult[] = [];
+    let deletedFilesAll: File[] = [];
+    let deletedFoldersAll: Folder[] = [];
+    const files: Map<string, { fileId: string; fileGoogleDriveId: string }[]> =
+      new Map();
+    const folders: string[] = [];
+    const filesToDeleteFromDB: string[] = [];
+
+    try {
+      const userWithRelatedEntity =
+        await this.usersRepository.findOneByConditionWithRelations<UserWithRelatedEntity>(
+          { id: currentUserId },
+          ['files', 'folders', 'stats'],
+        );
+
+      deleteManyDto.forEach((fileSystemItemToDelete) => {
+        let coincidence = false;
+
+        if ('fileId' in fileSystemItemToDelete) {
+          const existFile = userWithRelatedEntity.files.find((file) => {
+            return file.id === fileSystemItemToDelete.fileId;
+          });
+
+          if (existFile) {
+            const mapValue = files.get(existFile.fileGoogleDriveClientEmail)
+              ? files.get(existFile.fileGoogleDriveClientEmail).concat({
+                  fileId: existFile.id,
+                  fileGoogleDriveId: existFile.fileGoogleDriveId,
+                })
+              : [
+                  {
+                    fileId: existFile.id,
+                    fileGoogleDriveId: existFile.fileGoogleDriveId,
+                  },
+                ];
+            files.set(existFile.fileGoogleDriveClientEmail, mapValue);
+
+            coincidence = true;
+          }
+        }
+
+        if ('folderId' in fileSystemItemToDelete) {
+          const existFolder = userWithRelatedEntity.folders.find((folder) => {
+            return folder.id === fileSystemItemToDelete.folderId;
+          });
+
+          if (existFolder) {
+            folders.push(existFolder.id);
+            coincidence = true;
+          }
+        }
+        if (!coincidence) {
+          if ('fileId' in fileSystemItemToDelete) {
+            result.push({
+              fileId: fileSystemItemToDelete.fileId,
+              status: 'error',
+            });
+          }
+          if ('folderId' in fileSystemItemToDelete) {
+            result.push({
+              folderId: fileSystemItemToDelete.folderId,
+              status: 'error',
+            });
+          }
+        }
+      });
+
+      const user = userWithRelatedEntity.users[0];
+      const stats = userWithRelatedEntity.stats[0];
+      if (files.size > 0) {
+        for (const [key, value] of files) {
+          let executeDeleteFiles: Promise<void>[];
+
+          const account = user.googleServiceAccounts.find((account) => {
+            return account.clientEmail === key;
+          });
+
+          const { clientEmail, privateKey } = account;
+
+          await this.authenticate({ clientEmail, privateKey });
+
+          executeDeleteFiles = value.map(async (fileToDelete) => {
+            try {
+              const response = await this.driveService.files.delete({
+                fileId: fileToDelete.fileGoogleDriveId,
+              });
+
+              if (response.status === 204) {
+                filesToDeleteFromDB.push(fileToDelete.fileId);
+              }
+            } catch (error) {
+              result.push({
+                fileId: fileToDelete.fileId,
+                status: 'error',
+              });
+            }
+          });
+          await Promise.allSettled(executeDeleteFiles);
+        }
+
+        const deletedFiles =
+          await this.filesRepository.deleteManyById(filesToDeleteFromDB);
+
+        deletedFiles.forEach((deletedFile) => {
+          result.push({
+            fileId: deletedFile.id,
+            status: 'success',
+          });
+        });
+        deletedFilesAll = deletedFilesAll.concat(deletedFiles);
+
+        if (deletedFiles.length < filesToDeleteFromDB.length) {
+          filesToDeleteFromDB.forEach((folderIdToDelete) => {
+            const deletedFolder = deletedFiles.some((deletedFolder) => {
+              deletedFolder.id === folderIdToDelete;
+            });
+
+            if (!deletedFolder) {
+              result.push({
+                folderId: folderIdToDelete,
+                status: 'error',
+              });
+            }
+          });
+        }
+      }
+
+      if (folders.length > 0) {
+        const executeDeleteFolders: Promise<void>[] = folders.map(
+          async (folderId) => {
+            const recursiveResult = await this.deleteFolderRecursively(
+              currentUserId,
+              folderId,
+              user.googleServiceAccounts,
+            );
+
+            result = result.concat(recursiveResult.result);
+            deletedFilesAll = deletedFilesAll.concat(
+              recursiveResult.deletedFilesAll,
+            );
+            deletedFoldersAll = deletedFoldersAll.concat(
+              recursiveResult.deletedFoldersAll,
+            );
+          },
+        );
+
+        await Promise.allSettled(executeDeleteFolders);
+      }
+
+      await this.statsRepository.updateByCondition(
+        { userId: currentUserId },
+        {
+          fileCount: stats.fileCount - deletedFilesAll.length,
+          folderCount: stats.folderCount - deletedFoldersAll.length,
+        },
+      );
+
+      return result;
     } catch (error) {
       throw error;
     }
@@ -604,19 +991,19 @@ export class FilesSystemService {
     return new Observable((observer) => {
       const handler = (progress: FileUploadEvent) => {
         switch (progress.status) {
-          case StatusUpload.UPLOADING:
+          case UploadStatus.UPLOADING:
             observer.next({
               data: progress,
             } as MessageEvent);
             break;
-          case StatusUpload.COMPLETED:
+          case UploadStatus.COMPLETED:
             observer.next({
               data: progress,
             } as MessageEvent);
             emitter.off(emitterEventName.UPLOAD_PROGRESS, handler);
             observer.complete();
             break;
-          case StatusUpload.FAILED:
+          case UploadStatus.FAILED:
             observer.error({
               data: progress,
             } as MessageEvent);
@@ -649,37 +1036,31 @@ export class FilesSystemService {
       throw error;
     }
   }
-  async handleNameConflict(
-    entity: 'file' | 'folder',
+
+  private async handleFileNameConflict(
     parentFolderId: string | null,
     name: string,
     userChoice: NameConflictChoice = NameConflictChoice.RENAME,
   ): Promise<string> {
-    let innerEntity: File | Folder;
+    let innerEntity: File;
 
     let uniqueName = name;
-
     try {
-      entity === 'file'
-        ? (innerEntity = await this.filesRepository.findOneByCondition({
-            parentFolderId,
-            fileName: uniqueName,
-          }))
-        : (innerEntity = await this.foldersRepository.findOneByCondition({
-            parentFolderId,
-            folderName: uniqueName,
-          }));
-    } catch (error) {
-      if (!(error instanceof NotFoundException)) {
-        throw new InternalServerErrorException(error);
+      try {
+        innerEntity = await this.filesRepository.findOneByCondition({
+          parentFolderId,
+          fileName: uniqueName,
+        });
+      } catch (error) {
+        if (!(error instanceof NotFoundException)) {
+          throw new InternalServerErrorException(error, { cause: error });
+        }
       }
-    }
 
-    if (innerEntity) {
-      if (userChoice === NameConflictChoice.RENAME) {
-        let counter = 1;
-        while (true) {
-          if (entity === 'file') {
+      if (innerEntity) {
+        if (userChoice === NameConflictChoice.RENAME) {
+          let counter = 1;
+          while (true) {
             const extension = uniqueName.split('.').pop() || '';
             const nameWithoutExtension = uniqueName.slice(
               0,
@@ -687,52 +1068,106 @@ export class FilesSystemService {
             );
             const baseName = nameWithoutExtension.replace(/\s\(\d+\)$/, '');
             uniqueName = `${baseName} (${counter}).${extension}`;
-          } else {
+
+            counter++;
+            try {
+              innerEntity = await this.filesRepository.findOneByCondition({
+                parentFolderId,
+                fileName: uniqueName,
+              });
+            } catch (error) {
+              if (!(error instanceof NotFoundException)) {
+                throw new InternalServerErrorException(error);
+              }
+              innerEntity = null;
+            }
+
+            if (!innerEntity) {
+              return uniqueName;
+            }
+          }
+        }
+
+        if (userChoice === NameConflictChoice.OVERWRITE) {
+          try {
+            await this.filesRepository.deleteById(innerEntity.id);
+          } catch (error) {
+            throw error;
+          }
+
+          return uniqueName;
+        }
+      }
+
+      return uniqueName;
+    } catch (error) {
+      throw new Error(`Failed to handle file conflict: ${error.message}`);
+    }
+  }
+
+  private async handleFolderNameConflict(
+    parentFolderId: string | null,
+    name: string,
+    userChoice: NameConflictChoice = NameConflictChoice.RENAME,
+  ): Promise<string> {
+    let innerEntity: File | Folder;
+
+    let uniqueName = name;
+    try {
+      try {
+        innerEntity = await this.foldersRepository.findOneByCondition({
+          parentFolderId,
+          folderName: uniqueName,
+        });
+      } catch (error) {
+        if (!(error instanceof NotFoundException)) {
+          throw new InternalServerErrorException(error);
+        }
+      }
+
+      if (innerEntity) {
+        if (userChoice === NameConflictChoice.RENAME) {
+          let counter = 1;
+          while (true) {
             const baseName = uniqueName.replace(/\s\(\d+\)$/, '');
             uniqueName = `${baseName} (${counter})`;
-          }
 
-          counter++;
-          try {
-            entity === 'file'
-              ? (innerEntity = await this.filesRepository.findOneByCondition({
-                  parentFolderId,
-                  fileName: uniqueName,
-                }))
-              : (innerEntity = await this.foldersRepository.findOneByCondition({
-                  parentFolderId,
-                  folderName: uniqueName,
-                }));
-          } catch (error) {
-            if (!(error instanceof NotFoundException)) {
-              throw new InternalServerErrorException(error);
+            counter++;
+            try {
+              innerEntity = await this.foldersRepository.findOneByCondition({
+                parentFolderId,
+                folderName: uniqueName,
+              });
+            } catch (error) {
+              if (!(error instanceof NotFoundException)) {
+                throw new InternalServerErrorException(error, { cause: error });
+              }
+              innerEntity = null;
             }
-            innerEntity = null;
+
+            if (!innerEntity) {
+              return uniqueName;
+            }
+          }
+        }
+
+        if (userChoice === NameConflictChoice.OVERWRITE) {
+          try {
+            await this.foldersRepository.deleteById(innerEntity.id);
+          } catch (error) {
+            throw error;
           }
 
-          if (!innerEntity) {
-            return uniqueName;
-          }
+          return uniqueName;
         }
       }
 
-      if (userChoice === NameConflictChoice.OVERWRITE) {
-        try {
-          entity === 'file'
-            ? await this.filesRepository.deleteById(innerEntity.id)
-            : await this.foldersRepository.deleteById(innerEntity.id);
-        } catch (error) {
-          throw error;
-        }
-
-        return uniqueName;
-      }
+      return uniqueName;
+    } catch (error) {
+      throw new Error(`Failed to handle file conflict: ${error.message}`, {
+        cause: error,
+      });
     }
-
-    return uniqueName;
-  }
-  catch(error) {
-    throw new Error(`Failed to handle file conflict: ${error.message}`);
   }
 
   private getOrCreateEmitter(
@@ -766,5 +1201,154 @@ export class FilesSystemService {
       this.activeUploads.delete(userId);
     }
     this.activeUploads.set(userId, current - 1);
+  }
+
+  private async deleteFolderRecursively(
+    currentUserId: UUID,
+    folderId: string,
+    userGoogleServiceAccounts: {
+      clientEmail: string;
+      privateKey: string;
+      rootFolderId?: string;
+    }[],
+  ): Promise<DeleteFolderRecursivelyResult> {
+    let files: File[];
+    let subFolders: Folder[];
+    let result: FileSystemItemChangeResult[] = [];
+    const filesToDeleteFromDB: string[] = [];
+    let deletedFilesAll: File[] = [];
+    let deletedFoldersAll: Folder[] = [];
+    try {
+      try {
+        files = await this.filesRepository.findAllByCondition({
+          userId: currentUserId,
+          parentFolderId: folderId,
+        });
+      } catch (error) {
+        if (error instanceof NotFoundException) {
+          files = [];
+        } else {
+          throw error;
+        }
+      }
+      if (files.length > 0) {
+        const filesMap: Map<
+          string,
+          { fileId: string; fileGoogleDriveId: string }[]
+        > = new Map();
+        files.forEach((file) => {
+          const mapValue = filesMap.get(file.fileGoogleDriveClientEmail)
+            ? filesMap.get(file.fileGoogleDriveClientEmail).concat({
+                fileId: file.id,
+                fileGoogleDriveId: file.fileGoogleDriveId,
+              })
+            : [
+                {
+                  fileId: file.id,
+                  fileGoogleDriveId: file.fileGoogleDriveId,
+                },
+              ];
+          filesMap.set(file.fileGoogleDriveClientEmail, mapValue);
+        });
+
+        for (const [key, value] of filesMap) {
+          const account = userGoogleServiceAccounts.find((account) => {
+            return account.clientEmail === key;
+          });
+
+          const { clientEmail, privateKey } = account;
+
+          await this.authenticate({ clientEmail, privateKey });
+
+          const executeDeleteFiles: Promise<void>[] = value.map(
+            async (fileToDelete) => {
+              try {
+                const response = await this.driveService.files.delete({
+                  fileId: fileToDelete.fileGoogleDriveId,
+                });
+
+                if (response.status === 204) {
+                  filesToDeleteFromDB.push(fileToDelete.fileId);
+                }
+              } catch (error) {
+                result.push({
+                  fileId: fileToDelete.fileId,
+                  status: 'error',
+                });
+              }
+            },
+          );
+          await Promise.allSettled(executeDeleteFiles);
+        }
+
+        const deletedFiles =
+          await this.filesRepository.deleteManyById(filesToDeleteFromDB);
+
+        deletedFiles.forEach((deletedFile) => {
+          result.push({
+            fileId: deletedFile.id,
+            status: 'success',
+          });
+        });
+        deletedFilesAll = deletedFilesAll.concat(deletedFiles);
+
+        if (deletedFiles.length < filesToDeleteFromDB.length) {
+          filesToDeleteFromDB.forEach((folderIdToDelete) => {
+            const deletedFolder = deletedFiles.some((deletedFolder) => {
+              deletedFolder.id === folderIdToDelete;
+            });
+            if (!deletedFolder) {
+              result.push({
+                folderId: folderIdToDelete,
+                status: 'error',
+              });
+            }
+          });
+        }
+      }
+
+      try {
+        subFolders = await this.foldersRepository.findAllByCondition({
+          userId: currentUserId,
+          parentFolderId: folderId,
+        });
+      } catch (error) {
+        if (error instanceof NotFoundException) {
+          subFolders = [];
+        } else {
+          throw error;
+        }
+      }
+
+      if (subFolders.length > 0) {
+        for (const subFolder of subFolders) {
+          const recursiveResult = await this.deleteFolderRecursively(
+            currentUserId,
+            subFolder.id,
+            userGoogleServiceAccounts,
+          );
+
+          result = result.concat(recursiveResult.result);
+          deletedFilesAll = deletedFilesAll.concat(
+            recursiveResult.deletedFilesAll,
+          );
+          deletedFoldersAll = deletedFoldersAll.concat(
+            recursiveResult.deletedFoldersAll,
+          );
+        }
+      }
+
+      const deletedFolder = await this.foldersRepository.deleteById(folderId);
+      result.push({
+        folderId: deletedFolder.id,
+        status: 'success',
+      });
+
+      deletedFoldersAll = deletedFoldersAll.concat(deletedFolder);
+
+      return { result, deletedFilesAll, deletedFoldersAll };
+    } catch (error) {
+      throw error;
+    }
   }
 }

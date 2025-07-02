@@ -6,7 +6,14 @@ import {
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { UUID } from 'crypto';
-import { and, Column, eq, InferInsertModel, isNull } from 'drizzle-orm';
+import {
+  and,
+  Column,
+  eq,
+  inArray,
+  InferInsertModel,
+  isNull,
+} from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { PgTable, TableConfig } from 'drizzle-orm/pg-core';
 import { RelatedTables, TableWithId } from '../types/types';
@@ -47,7 +54,10 @@ export abstract class BaseAbstractRepository<
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new InternalServerErrorException(error.message, { cause: error });
+      throw new InternalServerErrorException(
+        `Error creating ${this.entityName}: ${error.message}`,
+        { cause: error },
+      );
     }
   }
 
@@ -72,7 +82,10 @@ export abstract class BaseAbstractRepository<
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new InternalServerErrorException(error.message, { cause: error });
+      throw new InternalServerErrorException(
+        `Error creating ${this.entityName}s: ${error.message}`,
+        { cause: error },
+      );
     }
   }
 
@@ -98,7 +111,10 @@ export abstract class BaseAbstractRepository<
       if (error instanceof NotFoundException) {
         throw error;
       }
-      throw new InternalServerErrorException(error.message, { cause: error });
+      throw new InternalServerErrorException(
+        `Error finding ${this.entityName} by ID: ${error.message}`,
+        { cause: error },
+      );
     }
   }
 
@@ -145,7 +161,10 @@ export abstract class BaseAbstractRepository<
       if (error instanceof NotFoundException) {
         throw error;
       }
-      throw new InternalServerErrorException(error.message, { cause: error });
+      throw new InternalServerErrorException(
+        `Error finding ${this.entityName} by ID with relations: ${error.message}`,
+        { cause: error },
+      );
     }
   }
 
@@ -184,7 +203,10 @@ export abstract class BaseAbstractRepository<
         throw error;
       }
 
-      throw new InternalServerErrorException(error.message, { cause: error });
+      throw new InternalServerErrorException(
+        `Error finding ${this.entityName} by condition: ${error.message}`,
+        { cause: error },
+      );
     }
   }
 
@@ -240,7 +262,10 @@ export abstract class BaseAbstractRepository<
         throw error;
       }
 
-      throw new InternalServerErrorException(error.message, { cause: error });
+      throw new InternalServerErrorException(
+        `Error finding ${this.entityName} with relations by condition: ${error.message}`,
+        { cause: error },
+      );
     }
   }
 
@@ -292,7 +317,10 @@ export abstract class BaseAbstractRepository<
       ) {
         throw error;
       }
-      throw new InternalServerErrorException(error.message, { cause: error });
+      throw new InternalServerErrorException(
+        `Error finding ${this.entityName}s by condition: ${error.message}`,
+        { cause: error },
+      );
     }
   }
 
@@ -323,7 +351,10 @@ export abstract class BaseAbstractRepository<
       if (error instanceof NotFoundException) {
         throw error;
       }
-      throw new InternalServerErrorException(error.message, { cause: error });
+      throw new InternalServerErrorException(
+        `Error finding ${this.entityName}s: ${error.message}`,
+        { cause: error },
+      );
     }
   }
 
@@ -353,7 +384,10 @@ export abstract class BaseAbstractRepository<
       if (error instanceof NotFoundException) {
         throw error;
       }
-      throw new InternalServerErrorException(error.message, { cause: error });
+      throw new InternalServerErrorException(
+        `Error updating ${this.entityName} by ID: ${error.message}`,
+        { cause: error },
+      );
     }
   }
 
@@ -395,7 +429,59 @@ export abstract class BaseAbstractRepository<
       ) {
         throw error;
       }
-      throw new InternalServerErrorException(error.message, { cause: error });
+      throw new InternalServerErrorException(
+        `Error updating ${this.entityName}s by condition: ${error.message}`,
+        { cause: error },
+      );
+    }
+  }
+
+  /**
+   * Update multiple entities by their IDs.
+   * @param updates - Array of objects with `id` and `data` to update.
+   * @returns Array of updated entities.
+   */
+  public async updateManyById(
+    updates: { id: string | number | UUID; data: Partial<T> }[],
+  ): Promise<T[]> {
+    if (updates.length === 0) {
+      throw new BadRequestException('No updates provided');
+    }
+
+    const results: T[] = [];
+
+    try {
+      await this.database.transaction(async (tx) => {
+        for (const { id, data } of updates) {
+          const result = await tx
+            .update(this.table)
+            .set(data)
+            .where(eq(this.table.id, id))
+            .returning();
+
+          if (!Array.isArray(result) || result.length === 0) {
+            throw new NotFoundException(
+              `${this.entityName} not found with ID: ${id}`,
+            );
+          }
+
+          results.push(result[0] as T);
+        }
+      });
+
+      return results;
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(
+        `Error updating multiple ${this.entityName}s: ${error.message}`,
+        { cause: error },
+      );
     }
   }
 
@@ -420,7 +506,10 @@ export abstract class BaseAbstractRepository<
       if (error instanceof NotFoundException) {
         throw error;
       }
-      throw new InternalServerErrorException(error.message, { cause: error });
+      throw new InternalServerErrorException(
+        `Error deleting ${this.entityName} by ID: ${error.message}`,
+        { cause: error },
+      );
     }
   }
 
@@ -454,7 +543,48 @@ export abstract class BaseAbstractRepository<
       if (error instanceof NotFoundException) {
         throw error;
       }
-      throw new InternalServerErrorException(error.message, { cause: error });
+      throw new InternalServerErrorException(
+        `Error deleting ${this.entityName} by condition: ${error.message}`,
+        { cause: error },
+      );
+    }
+  }
+
+  /**
+   * Delete an entities by its ID.
+   * @param id - The array of ID of the entity.
+   * @returns An array of deleted entities.
+   */
+  public async deleteManyById(ids: (number | string | UUID)[]): Promise<T[]> {
+    try {
+      if (!('id' in this.table)) {
+        throw new Error('The table does not contain the column "id"');
+      }
+
+      const idColumn = this.table.id;
+      console.log('idColumn', idColumn);
+
+      const result = await this.database
+        .delete(this.table)
+        .where(inArray(idColumn, ids))
+        .returning();
+      console.log('result', result);
+
+      if (!Array.isArray(result) || result.length === 0) {
+        throw new NotFoundException(`${this.entityName}s not found`);
+      }
+
+      return result as T[];
+    } catch (error) {
+      console.log('error', error);
+
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Error deleting ${this.entityName}s by ID: ${error.message}`,
+        { cause: error },
+      );
     }
   }
 

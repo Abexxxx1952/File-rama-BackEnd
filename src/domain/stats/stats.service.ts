@@ -33,7 +33,6 @@ export class StatsService {
           const about = await driveService.about.get({
             fields: 'storageQuota',
           });
-          console.log('about', about);
 
           const storageQuota = about.data.storageQuota;
 

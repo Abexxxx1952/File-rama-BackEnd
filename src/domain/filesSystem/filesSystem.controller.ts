@@ -32,12 +32,14 @@ import { PaginationParams } from '@/database/paginationDto/pagination.dto';
 import {
   ApiFilesSystemDeleteDeleteFile,
   ApiFilesSystemDeleteDeleteFolder,
+  ApiFilesSystemDeleteDeleteMany,
   ApiFilesSystemGet,
   ApiFilesSystemGetFindPublicFiles,
   ApiFilesSystemPatchCreateFilePermissions,
   ApiFilesSystemPatchDeleteFilePermissions,
   ApiFilesSystemPatchUpdateFile,
   ApiFilesSystemPatchUpdateFolder,
+  ApiFilesSystemPatchUpdateMany,
   ApiFilesSystemPostCreateFile,
   ApiFilesSystemPostCreateFolder,
   ApiFilesSystemsGetFindFileById,
@@ -45,6 +47,8 @@ import {
 } from '@/swagger/filesSystem';
 import { AccessTokenAuthGuardFromHeadersAndCookies } from '../users/auth/guards/access-token-from-headers-cookies.guard';
 import {
+  FILE_AND_FOLDER__CREATE_DELETE_CACHE_INVALIDATE_PATHS,
+  FILE_AND_FOLDER_CHANGE_CACHE_INVALIDATE_PATHS,
   FILE_CHANGE_CACHE_INVALIDATE_PATHS,
   FILE_CREATE_DELETE_CACHE_INVALIDATE_PATHS,
   FILE_SYSTEM_ITEM_CHANGE_CACHE_INVALIDATE_PATHS,
@@ -53,14 +57,19 @@ import {
 } from './cache/cache-paths';
 import { CreateFilePermissionsDto } from './dto/create-file-permissions';
 import { CreateFolderDto } from './dto/create-folder.dto';
+import { DeleteFileDto } from './dto/delete-file.dto';
+import { DeleteFolderDto } from './dto/delete-folder.dto';
+import { DeleteManyDto } from './dto/delete-many.dto';
 import { FindFilesByConditionsDto } from './dto/find-public-file-by-conditions.dto';
 import { UpdateFileDto } from './dto/update-file.dto';
 import { UpdateFolderDto } from './dto/update-folder.dto';
+import { UpdateManyDto } from './dto/update-many.dto';
 import { FilesSystemService } from './filesSystem.service';
 import { FilesRepository } from './repository/files.repository';
 import { FoldersRepository } from './repository/folders.repository';
 import { File } from './types/file';
 import { FileUploadResult } from './types/file-upload-result';
+import { FileSystemItemChangeResult } from './types/fileSystemItem-change-result';
 import { Folder } from './types/folder';
 
 @ApiTags('v1/filesSystem')
@@ -279,6 +288,25 @@ export class FilesController {
     );
   }
 
+  @Patch('updateMany')
+  @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
+  @HttpCode(HttpStatus.OK)
+  @CacheOptionInvalidateCache({
+    cache: CacheOptions.InvalidateCacheByKey,
+    cacheKey: FILE_AND_FOLDER_CHANGE_CACHE_INVALIDATE_PATHS,
+  })
+  @UseInterceptors(CacheInterceptor)
+  @ApiFilesSystemPatchUpdateMany()
+  async updateMany(
+    @CurrentUser('id') currentUserId: UUID,
+    @Body() updateManyDto: UpdateManyDto[],
+  ): Promise<FileSystemItemChangeResult[]> {
+    return await this.filesSystemService.updateMany(
+      currentUserId,
+      updateManyDto,
+    );
+  }
+
   @Delete('deleteFile')
   @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
   @HttpCode(HttpStatus.OK)
@@ -290,7 +318,7 @@ export class FilesController {
   @ApiFilesSystemDeleteDeleteFile()
   async deleteFile(
     @CurrentUser('id') currentUserId: UUID,
-    @Body() { fileId }: { fileId: UUID },
+    @Body() { fileId }: DeleteFileDto,
   ): Promise<File> {
     return await this.filesSystemService.deleteFile(currentUserId, fileId);
   }
@@ -306,9 +334,25 @@ export class FilesController {
   @ApiFilesSystemDeleteDeleteFolder()
   async deleteFolder(
     @CurrentUser('id') currentUserId: UUID,
-    @Body() { folderId }: { folderId: UUID },
-  ): Promise<Folder> {
-    return await this.foldersRepository.deleteFolder(currentUserId, folderId);
+    @Body() { folderId }: DeleteFolderDto,
+  ): Promise<FileSystemItemChangeResult[]> {
+    return await this.filesSystemService.deleteFolder(currentUserId, folderId);
+  }
+
+  @Delete('deleteMany')
+  @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
+  @HttpCode(HttpStatus.OK)
+  @CacheOptionInvalidateCache({
+    cache: CacheOptions.InvalidateCacheByKey,
+    cacheKey: FILE_AND_FOLDER__CREATE_DELETE_CACHE_INVALIDATE_PATHS,
+  })
+  @UseInterceptors(CacheInterceptor)
+  @ApiFilesSystemDeleteDeleteMany()
+  async deleteMany(
+    @CurrentUser('id') currentUserId: UUID,
+    @Body() { deleteMany }: DeleteManyDto,
+  ): Promise<FileSystemItemChangeResult[]> {
+    return await this.filesSystemService.deleteMany(currentUserId, deleteMany);
   }
 
   @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)

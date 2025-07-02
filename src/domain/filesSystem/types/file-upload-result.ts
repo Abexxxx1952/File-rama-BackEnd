@@ -1,13 +1,13 @@
 import { File } from './file';
-import { StatusUpload } from './file-upload-event';
+import { UploadStatus } from './file-upload-event';
 
 export interface FileUploadCompleteResult {
   file: File;
-  status: StatusUpload.COMPLETED;
+  status: UploadStatus.COMPLETED;
   account: string;
 }
 export interface FileUploadFailedResult {
-  status: StatusUpload.FAILED;
+  status: UploadStatus.FAILED;
   error: string;
   fileName: string;
 }

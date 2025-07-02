@@ -1,4 +1,4 @@
-export enum StatusUpload {
+export enum UploadStatus {
   FAILED = 'FAILED',
   UPLOADING = 'UPLOADING',
   COMPLETED = 'COMPLETED',
@@ -7,6 +7,6 @@ export enum StatusUpload {
 export class FileUploadEvent {
   fileName: string;
   progress: number;
-  status: StatusUpload;
+  status: UploadStatus;
   error: string | null;
 }
