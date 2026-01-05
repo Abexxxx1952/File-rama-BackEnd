@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { v4 as uuidv4 } from 'uuid';
+import { TOKENS_REPOSITORY, USERS_REPOSITORY } from '@/configs/providersTokens';
 import { UsersRepository } from '@/domain/users/repository/users.repository';
 import { MailService } from '@/mail/mail.service';
 import { TokensRepository } from '../repository/tokens.repository';
@@ -16,14 +17,14 @@ import { TokenVerificationDto } from './dto/token-verification.dto';
 export class EmailConfirmationService {
   private usersRepository: UsersRepository;
   public constructor(
-    @Inject('TokensRepository')
+    @Inject(TOKENS_REPOSITORY)
     private readonly tokensRepository: TokensRepository,
     private readonly mailService: MailService,
     private readonly moduleRef: ModuleRef,
   ) {}
 
   async onModuleInit() {
-    this.usersRepository = this.moduleRef.get('UsersRepository', {
+    this.usersRepository = this.moduleRef.get(USERS_REPOSITORY, {
       strict: false,
     });
   }

@@ -90,6 +90,10 @@ class EnvironmentVariables {
 
   @IsString()
   @IsNotEmpty()
+  PASSWORD_PEPPER: string;
+
+  @IsString()
+  @IsNotEmpty()
   GOOGLE_OAUTH2_CLIENT_ID: string;
 
   @IsString()

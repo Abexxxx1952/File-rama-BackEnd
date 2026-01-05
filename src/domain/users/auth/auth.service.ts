@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { FastifyReply } from 'fastify';
+import { TOKENS_REPOSITORY, USERS_REPOSITORY } from '@/configs/providersTokens';
 import { UsersRepository } from '../repository/users.repository';
 import { User } from '../types/users';
 import { TokensRepository } from './repository/tokens.repository';
@@ -23,15 +24,47 @@ import { Token, TokenTypeEnum } from './types/token';
 
 @Injectable()
 export class AuthService {
+  private readonly pepper: string;
+  private readonly accessTokenName: string;
+  private readonly refreshTokenName: string;
+  private readonly refreshTokenPath: string;
+  private readonly authProviderRedirectUrl: string;
+  private readonly accessTokenSecret: string;
+  private readonly accessTokenExpirationTime: number;
+  private readonly refreshTokenSecret: string;
+  private readonly refreshTokenExpirationTime: number;
   constructor(
     private readonly configService: ConfigService,
-    @Inject('UsersRepository')
+    @Inject(USERS_REPOSITORY)
     private readonly usersRepository: UsersRepository,
-    @Inject('TokensRepository')
+    @Inject(TOKENS_REPOSITORY)
     private readonly tokensRepository: TokensRepository,
     private readonly jwtService: JwtService,
     private readonly twoFactorAuthService: TwoFactorAuthService,
-  ) {}
+  ) {
+    this.pepper = this.configService.getOrThrow<string>('PASSWORD_PEPPER');
+    this.accessTokenName =
+      this.configService.getOrThrow<string>('ACCESS_TOKEN_NAME');
+    this.refreshTokenName =
+      this.configService.getOrThrow<string>('REFRESH_TOKEN_NAME');
+    this.refreshTokenPath =
+      this.configService.getOrThrow<string>('REFRESH_TOKEN_PATH');
+    this.authProviderRedirectUrl = this.configService.getOrThrow<string>(
+      'CLIENT_AUTH_PROVIDER_REDIRECT_URL',
+    );
+    this.accessTokenSecret = this.configService.getOrThrow<string>(
+      'JWT_ACCESS_TOKEN_SECRET',
+    );
+    this.accessTokenExpirationTime = this.configService.getOrThrow<number>(
+      'JWT_ACCESS_TOKEN_EXPIRATION_TIME',
+    );
+    this.refreshTokenSecret = this.configService.getOrThrow<string>(
+      'JWT_REFRESH_TOKEN_SECRET',
+    );
+    this.refreshTokenExpirationTime = this.configService.getOrThrow<number>(
+      'JWT_REFRESH_TOKEN_EXPIRATION_TIME',
+    );
+  }
 
   async login(
     currentUser: AttachedUser,
@@ -44,31 +77,21 @@ export class AuthService {
         this.updateRtToken(currentUser.email, tokens.refresh_token),
       ]);
 
-      response.cookie(
-        this.configService.getOrThrow<string>('ACCESS_TOKEN_NAME'),
-        tokens.access_token,
-        {
-          httpOnly: true,
-          sameSite: 'none',
-          secure: process.env.MODE === 'production',
-          path: '/',
-          expires: this.getExpiresTimeAT(),
-        },
-      );
+      response.cookie(this.accessTokenName, tokens.access_token, {
+        httpOnly: true,
+        sameSite: 'none',
+        secure: process.env.MODE === 'production',
+        path: '/',
+        expires: this.getExpiresTimeAT(),
+      });
 
-      response.cookie(
-        this.configService.getOrThrow<string>('REFRESH_TOKEN_NAME'),
-        tokens.refresh_token,
-        {
-          httpOnly: true,
-          sameSite: 'none',
-          secure: process.env.MODE === 'production',
-          path: this.configService.getOrThrow<string>('REFRESH_TOKEN_PATH'),
-          expires: this.getExpiresTimeRT(),
-        },
-      );
-
-      response.send(user);
+      response.cookie(this.refreshTokenName, tokens.refresh_token, {
+        httpOnly: true,
+        sameSite: 'none',
+        secure: process.env.MODE === 'production',
+        path: this.refreshTokenPath,
+        expires: this.getExpiresTimeRT(),
+      });
 
       return user;
     } catch (error) {
@@ -84,9 +107,7 @@ export class AuthService {
       const tokens = await this.getTokens(currentUser);
       await this.updateRtToken(currentUser.email, tokens.refresh_token);
       response.redirect(
-        this.configService.getOrThrow<string>(
-          'CLIENT_AUTH_PROVIDER_REDIRECT_URL',
-        ) +
+        this.authProviderRedirectUrl +
           '?access_token=' +
           tokens.access_token +
           '&refresh_token=' +
@@ -115,7 +136,7 @@ export class AuthService {
         httpOnly: true,
         expires: new Date(),
         sameSite: 'lax',
-        path: this.configService.getOrThrow<string>('REFRESH_TOKEN_PATH'),
+        path: this.refreshTokenPath,
       });
 
       return currentUser;
@@ -174,7 +195,7 @@ export class AuthService {
       response.cookie('Authentication_refreshToken', tokens.refresh_token, {
         httpOnly: true,
         sameSite: 'lax',
-        path: this.configService.getOrThrow<string>('REFRESH_TOKEN_PATH'),
+        path: this.refreshTokenPath,
         expires: this.getExpiresTimeRT(),
       });
       return {
@@ -204,7 +225,7 @@ export class AuthService {
       }
 
       const passwordMatches = await bcrypt.compare(
-        password,
+        password + this.pepper,
         userExists.password,
       );
 
@@ -295,7 +316,7 @@ export class AuthService {
         tokenType: TokenTypeEnum.REFRESH,
       };
 
-      const result = await this.tokensRepository.create(token);
+      await this.tokensRepository.create(token);
     } catch (error) {
       throw error;
     }
@@ -311,20 +332,12 @@ export class AuthService {
 
     const [at, rt] = await Promise.all([
       this.jwtService.signAsync(jwtPayload, {
-        secret: this.configService.getOrThrow<string>(
-          'JWT_ACCESS_TOKEN_SECRET',
-        ),
-        expiresIn: this.configService.getOrThrow<number>(
-          'JWT_ACCESS_TOKEN_EXPIRATION_TIME',
-        ),
+        secret: this.accessTokenSecret,
+        expiresIn: this.accessTokenExpirationTime,
       }),
       this.jwtService.signAsync(jwtPayload, {
-        secret: this.configService.getOrThrow<string>(
-          'JWT_REFRESH_TOKEN_SECRET',
-        ),
-        expiresIn: this.configService.getOrThrow<number>(
-          'JWT_REFRESH_TOKEN_EXPIRATION_TIME',
-        ),
+        secret: this.refreshTokenSecret,
+        expiresIn: this.refreshTokenExpirationTime,
       }),
     ]);
 
@@ -346,8 +359,7 @@ export class AuthService {
   private getExpiresTimeRT(): Date {
     const expiresTime = new Date();
     expiresTime.setTime(
-      expiresTime.getTime() +
-        this.configService.get('JWT_REFRESH_TOKEN_EXPIRATION_TIME') * 1000,
+      expiresTime.getTime() + this.accessTokenExpirationTime * 1000,
     );
 
     return expiresTime;

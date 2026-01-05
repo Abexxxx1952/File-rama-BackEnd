@@ -16,15 +16,14 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { UUID } from 'crypto';
-import { TransformResultInterceptor } from '@/common/interceptors/transform-result.interceptor';
-import { CurrentUser } from '../../common/decorators/currentUser.decorator';
-import { ParseRequestBodyWhenLogging } from '../../common/decorators/setMetadataRequestBodyLogging.decorator';
 import {
   CacheInterceptor,
   CacheOptionInvalidateCache,
   CacheOptions,
-} from '../../common/interceptors/cache.interceptor';
-import { PaginationParams } from '../../database/paginationDto/pagination.dto';
+} from '@/common/interceptors/cache.interceptor';
+import { TransformResultInterceptor } from '@/common/interceptors/transform-result.interceptor';
+import { USERS_REPOSITORY } from '@/configs/providersTokens';
+import { PaginationParams } from '@/database/paginationDto/pagination.dto';
 import {
   ApiUsersDeleteDeleteUser,
   ApiUsersGet,
@@ -33,7 +32,9 @@ import {
   ApiUsersGetFindOneBy,
   ApiUsersGetFindWithRelations,
   ApiUsersPatchUpdate,
-} from '../../swagger/users';
+} from '@/swagger/users';
+import { CurrentUser } from '../../common/decorators/currentUser.decorator';
+import { ParseRequestBodyWhenLogging } from '../../common/decorators/setMetadataRequestBodyLogging.decorator';
 import { AccessTokenAuthGuardFromHeadersAndCookies } from './auth/guards/access-token-from-headers-cookies.guard';
 import { USER_CHANGE_CACHE_INVALIDATE_PATHS } from './cache/cache-paths';
 import { FindUsersByConditionsDto } from './dto/find-by-conditions.dto';
@@ -51,7 +52,7 @@ import { User, UserPoor } from './types/users';
 @UseInterceptors(ClassSerializerInterceptor)
 export class UsersController {
   constructor(
-    @Inject('UsersRepository')
+    @Inject(USERS_REPOSITORY)
     private readonly usersRepository: UsersRepository,
   ) {}
 

@@ -7,11 +7,13 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { UUID } from 'crypto';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { STATS_REPOSITORY } from '@/configs/providersTokens';
+import { DATABASE_CONNECTION } from '@/configs/providersTokens';
 import { BaseAbstractRepository } from '@/database/abstractRepository/base.abstract.repository';
-import { DATABASE_CONNECTION } from '@/database/database.module';
 import { filesSchema } from '@/domain/filesSystem/schema/files.schema';
 import { foldersSchema } from '@/domain/filesSystem/schema/folder.schema';
 import { StatsRepository } from '@/domain/stats/repository/stats.repository';
@@ -36,13 +38,16 @@ export class UsersRepository extends BaseAbstractRepository<
   typeof usersSchema
 > {
   private readonly uniqueProperty: string = 'email';
+  private readonly pepper: string;
+  private readonly saltRounds = 10;
   constructor(
     @Inject(DATABASE_CONNECTION)
     public readonly database: NodePgDatabase<
       Record<'users', typeof usersSchema>
     >,
+    private readonly configService: ConfigService,
     private readonly emailConfirmationService: EmailConfirmationService,
-    @Inject('StatsRepository')
+    @Inject(STATS_REPOSITORY)
     private readonly statsRepository: StatsRepository,
   ) {
     super(database, usersSchema, 'User');
@@ -63,6 +68,7 @@ export class UsersRepository extends BaseAbstractRepository<
         relationField: usersSchema.id,
       },
     };
+    this.pepper = this.configService.getOrThrow<string>('PASSWORD_PEPPER');
   }
   public async createUserLocal(
     createUserLocalDto: CreateUserLocalDto,
@@ -205,8 +211,7 @@ export class UsersRepository extends BaseAbstractRepository<
   }
 
   public async hashPassword(password: string): Promise<string> {
-    const saltOrRounds = 10;
-    return await bcrypt.hash(password, saltOrRounds);
+    return bcrypt.hash(password + this.pepper, this.saltRounds);
   }
 
   private async createStats(

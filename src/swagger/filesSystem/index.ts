@@ -3,8 +3,10 @@ import {
   ApiBody,
   ApiCookieAuth,
   ApiExtraModels,
+  ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiProduces,
   ApiQuery,
   ApiResponse,
   getSchemaPath,
@@ -15,6 +17,7 @@ import { CreateFilePermissionsArgs } from './types/create-file-permissions';
 import { CreateFolderArgs } from './types/create-folder';
 import { DeleteFileArgs } from './types/delete-file.dto';
 import { DeleteFolderArgs } from './types/delete-folder.dto';
+import { DownloadFileArgs } from './types/download-file.dto';
 import { FileModel } from './types/file';
 import {
   FileUploadCompleteModel,
@@ -352,7 +355,82 @@ export function ApiFilesSystemPostCreateFolder() {
   };
 }
 
-export function ApiFilesSystemPatchCreateFilePermissions() {
+export function ApiFilesSystemGetDownloadFile() {
+  return function (
+    target: any,
+    propertyKey: string,
+    descriptor: PropertyDescriptor,
+  ) {
+    ApiOperation({
+      summary: 'Download file. (AccessToken required)',
+    })(target, propertyKey, descriptor);
+    ApiCookieAuth('access_token')(target, propertyKey, descriptor);
+    ApiBearerAuth('authorization')(target, propertyKey, descriptor);
+    ApiOkResponse({
+      description: 'Binary file stream',
+      schema: {
+        type: 'string',
+        format: 'binary',
+      },
+    })(target, propertyKey, descriptor);
+    ApiProduces('application/octet-stream')(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 400,
+      description: 'Bad Request',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 401,
+      description: 'Unauthorized',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 429,
+      description: 'ThrottlerException: Too Many Requests',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 500,
+      description: 'Internal Server Error',
+    })(target, propertyKey, descriptor);
+  };
+}
+
+export function ApiFilesSystemGetStreamPublicFile() {
+  return function (
+    target: any,
+    propertyKey: string,
+    descriptor: PropertyDescriptor,
+  ) {
+    ApiOperation({
+      summary: 'Stream file.',
+    })(target, propertyKey, descriptor);
+
+    ApiOkResponse({
+      description: 'Binary file stream',
+      schema: {
+        type: 'string',
+        format: 'binary',
+      },
+    })(target, propertyKey, descriptor);
+    ApiProduces('application/octet-stream')(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 400,
+      description: 'Bad Request',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 401,
+      description: 'Unauthorized',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 429,
+      description: 'ThrottlerException: Too Many Requests',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 500,
+      description: 'Internal Server Error',
+    })(target, propertyKey, descriptor);
+  };
+}
+
+export function ApiFilesSystemPatchCreateFilePublicPermissions() {
   return function (
     target: any,
     propertyKey: string,
@@ -392,7 +470,7 @@ export function ApiFilesSystemPatchCreateFilePermissions() {
   };
 }
 
-export function ApiFilesSystemPatchDeleteFilePermissions() {
+export function ApiFilesSystemPatchDeleteFilePublicPermissions() {
   return function (
     target: any,
     propertyKey: string,
@@ -403,17 +481,6 @@ export function ApiFilesSystemPatchDeleteFilePermissions() {
     })(target, propertyKey, descriptor);
     ApiCookieAuth('access_token')(target, propertyKey, descriptor);
     ApiBearerAuth('authorization')(target, propertyKey, descriptor);
-    ApiBody({
-      schema: {
-        type: 'object',
-        properties: {
-          fileId: {
-            type: 'string',
-          },
-        },
-        required: ['fileId'],
-      },
-    })(target, propertyKey, descriptor);
     ApiResponse({
       status: 200,
       description: 'Permission deleted successfully',

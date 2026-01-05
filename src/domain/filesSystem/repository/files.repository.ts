@@ -1,8 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { UUID } from 'crypto';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { DATABASE_CONNECTION } from '@/configs/providersTokens';
 import { BaseAbstractRepository } from '@/database/abstractRepository/base.abstract.repository';
-import { DATABASE_CONNECTION } from '@/database/database.module';
 import { usersSchema } from '@/domain/users/schema/users.schema';
 import { UpdateFileDto } from '../dto/update-file.dto';
 import { filesSchema } from '../schema/files.schema';

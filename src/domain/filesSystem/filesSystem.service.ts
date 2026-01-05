@@ -8,54 +8,50 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { UUID } from 'crypto';
-import { EventEmitter } from 'events';
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { GaxiosResponse } from 'gaxios';
-import { drive_v3, google } from 'googleapis';
+import { drive_v3 } from 'googleapis';
 import { Observable } from 'rxjs';
-import { pipeline } from 'stream';
-import { promisify } from 'util';
+import {
+  FILES_REPOSITORY,
+  FOLDERS_REPOSITORY,
+  STATS_REPOSITORY,
+  USERS_REPOSITORY,
+} from '@/configs/providersTokens';
 import { StatsRepository } from '../stats/repository/stats.repository';
 import { UsersRepository } from '../users/repository/users.repository';
-import { UserWithRelatedEntity } from '../users/types/user-with-related-entity';
-import { User } from '../users/types/users';
 import { CreateFilePermissionsDto } from './dto/create-file-permissions';
 import { CreateFolderDto } from './dto/create-folder.dto';
-import { GoogleAuthDto } from './dto/google-auth.dto';
 import { UpdateFileDto } from './dto/update-file.dto';
 import { UpdateFolderDto } from './dto/update-folder.dto';
-import { UpdateManyDto } from './dto/update-many.dto';
 import { FilesRepository } from './repository/files.repository';
 import { FoldersRepository } from './repository/folders.repository';
-import { DeleteFolderRecursivelyResult } from './types/delete-folder-recursively-result';
+import { FileTransferService } from './services/fileTransferService/fileTransferService';
+import { FolderCommandService } from './services/folderCommandService/folderCommandService';
+import { GoogleDriveClient } from './services/googleDriveClient/googleDriveClient';
+import { PermissionsService } from './services/permissionsService/permissionsService';
 import { DeleteMany } from './types/delete-many-params';
-import { emitterEventName } from './types/emitterEventName';
 import { File } from './types/file';
-import { FileUploadEvent, UploadStatus } from './types/file-upload-event';
 import { FileUploadResult } from './types/file-upload-result';
-import { FileWithRelatedEntity } from './types/file-with-related-entity';
 import { FileSystemItemChangeResult } from './types/fileSystemItem-change-result';
 import { Folder } from './types/folder';
-import { NameConflictChoice } from './types/upload-name-conflict';
+import { updateMany } from './types/update-many-params';
 
 @Injectable()
 export class FilesSystemService {
-  private driveService: drive_v3.Drive;
-  private readonly uploadEmitters = new Map<string, EventEmitter>();
-  private activeUploads = new Map<string, number>();
-  private readonly maxUploadsPerUser = this.configService.getOrThrow<number>(
-    'MAX_UPLOADS_PER_USER',
-  );
   constructor(
     private readonly configService: ConfigService,
-    @Inject('UsersRepository')
+    @Inject(USERS_REPOSITORY)
     private readonly usersRepository: UsersRepository,
-    @Inject('FilesRepository')
+    @Inject(FILES_REPOSITORY)
     private readonly filesRepository: FilesRepository,
-    @Inject('FoldersRepository')
+    @Inject(FOLDERS_REPOSITORY)
     private readonly foldersRepository: FoldersRepository,
-    @Inject('StatsRepository')
+    @Inject(STATS_REPOSITORY)
     private readonly statsRepository: StatsRepository,
+    private readonly googleDriveClient: GoogleDriveClient,
+    private readonly fileTransferService: FileTransferService,
+    private readonly folderCommandService: FolderCommandService,
+    private readonly permissionsService: PermissionsService,
   ) {}
 
   async createFile(
@@ -63,224 +59,17 @@ export class FilesSystemService {
     fileUploadId: string = '',
     request: FastifyRequest,
   ): Promise<FileUploadResult[]> {
-    const pipelineAsync = promisify(pipeline);
-
-    let description: string | null = null;
-    let conflictChoice: NameConflictChoice;
-    let parentFolderId: string | null = null;
-    let parentFolderGoogleDriveId: string | null = null;
-    const uploadResults: FileUploadResult[] = [];
-    let userWithRelatedEntity: UserWithRelatedEntity;
-    let about: GaxiosResponse;
-    let user: User;
-    let fileLoaded = false;
-    let hasMoreFiles = false;
-    const [emitter, key] = this.getOrCreateEmitter(currentUserId, fileUploadId);
-
     try {
-      userWithRelatedEntity =
-        await this.usersRepository.findByIdWithRelations<UserWithRelatedEntity>(
-          currentUserId,
-          ['stats'],
-        );
+      return await this.fileTransferService.createFile(
+        currentUserId,
+        fileUploadId,
+        request,
+      );
     } catch (error) {
-      throw error;
-    }
-
-    user = userWithRelatedEntity.users[0];
-
-    if (!user.isVerified) {
-      throw new ForbiddenException('User must be verified');
-    }
-
-    const allowed = this.startUpload(currentUserId);
-
-    if (!allowed) {
-      throw new BadRequestException('Parallel download limit exceeded');
-    }
-
-    try {
-      for (const account of user.googleServiceAccounts) {
-        const { clientEmail, privateKey, rootFolderId = null } = account;
-
-        await this.authenticate({ clientEmail, privateKey });
-
-        try {
-          about = await this.driveService.about.get({
-            fields: 'storageQuota',
-          });
-        } catch (error) {
-          continue;
-        }
-
-        const storageQuota = about.data.storageQuota;
-
-        const totalSpace = Number(storageQuota.limit);
-        const usedSpace = Number(storageQuota.usage);
-        const availableSpace = totalSpace - usedSpace;
-
-        const fileSize =
-          parseInt(request.raw.headers['content-length'], 10) || 0;
-
-        if (fileSize === 0) {
-          throw new BadRequestException('File has no length');
-        }
-
-        if (availableSpace < fileSize) {
-          continue;
-        }
-
-        for await (const part of request.parts()) {
-          let fileName: string | null = null;
-          let mimeType: string | null = null;
-          if (part.type === 'field') {
-            if (part.fieldname === 'description') {
-              description = String(part.value);
-            }
-            if (part.fieldname === 'conflictChoice') {
-              const value = String(part.value);
-              if (
-                Object.values(NameConflictChoice).includes(
-                  value as NameConflictChoice,
-                )
-              ) {
-                conflictChoice = value as NameConflictChoice;
-              }
-            }
-
-            if (part.fieldname === 'parentFolderId') {
-              parentFolderId = String(part.value);
-            }
-            if (part.fieldname === 'parentFolderGoogleDriveId') {
-              parentFolderGoogleDriveId = String(part.value);
-            }
-          }
-
-          if (part.type === 'file') {
-            if (fileLoaded) {
-              hasMoreFiles = true;
-              continue;
-            }
-
-            fileName = part.filename;
-            mimeType = part.mimetype;
-
-            fileName = await this.handleFileNameConflict(
-              parentFolderId,
-              fileName,
-              conflictChoice,
-            );
-
-            let receivedBytes = 0;
-            let lastSentProgress = 0;
-            part.file.on('data', (chunk) => {
-              receivedBytes += chunk.length;
-              const progress = Math.round((receivedBytes / fileSize) * 100);
-              if (progress > lastSentProgress) {
-                lastSentProgress = progress;
-
-                emitter.emit(emitterEventName.UPLOAD_PROGRESS, {
-                  fileName,
-                  progress: receivedBytes,
-                  status: UploadStatus.UPLOADING,
-                  error: null,
-                });
-              }
-            });
-
-            part.file.on('end', () => {
-              emitter.emit(emitterEventName.UPLOAD_PROGRESS, {
-                fileName,
-                progress: receivedBytes,
-                status: UploadStatus.COMPLETED,
-                error: null,
-              });
-              setTimeout(() => this.uploadEmitters.delete(key), 5000);
-            });
-
-            part.file.on('error', (err) => {
-              emitter.emit(emitterEventName.UPLOAD_PROGRESS, {
-                fileName,
-                progress: receivedBytes,
-                status: UploadStatus.FAILED,
-                error: err.message,
-              });
-            });
-
-            await pipelineAsync(part.file, async (stream) => {
-              const response = await this.driveService.files.create({
-                requestBody: {
-                  name: fileName,
-                  mimeType: mimeType,
-                  parents: parentFolderGoogleDriveId
-                    ? [parentFolderGoogleDriveId]
-                    : rootFolderId
-                      ? [rootFolderId]
-                      : ['root'],
-                  description,
-                },
-                media: {
-                  body: stream,
-                },
-                fields:
-                  'id, webViewLink, webContentLink, size, createdTime, fileExtension, parents',
-              });
-
-              const file = await this.filesRepository.create({
-                userId: user.id,
-                fileUrl: response.data.webViewLink,
-                fileDownloadUrl: response.data.webContentLink,
-                fileName,
-                fileExtension: response.data.fileExtension,
-                fileSize: response.data.size,
-                fileDescription: description,
-                parentFolderId,
-                fileGoogleDriveId: response.data.id,
-                fileGoogleDriveParentFolderId: response.data.parents[0],
-                fileGoogleDriveClientEmail: clientEmail,
-                uploadDate: new Date(response.data.createdTime),
-                isPublic: parentFolderGoogleDriveId ? true : false,
-              });
-
-              await this.statsRepository.updateByCondition(
-                { userId: user.id },
-                { fileCount: userWithRelatedEntity.stats[0].fileCount + 1 },
-              );
-
-              uploadResults.push({
-                file,
-                status: UploadStatus.COMPLETED,
-                account: clientEmail,
-              });
-            });
-            fileLoaded = true;
-          }
-        }
-      }
-
-      if (!fileLoaded) {
-        throw new BadRequestException('File not loaded. No availableSpace');
-      }
-      if (hasMoreFiles) {
-        uploadResults.push({
-          fileName: 'Others files',
-          status: UploadStatus.FAILED,
-          error: 'Only one file can be uploaded at a time',
-        });
-      }
-
-      return uploadResults;
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        error.message = `Status: ${UploadStatus.FAILED} error: ${error.message}`;
-        throw new BadRequestException(error.message);
-      }
-      if (error.errors[0].message) {
-        throw new BadRequestException(error.errors[0].message);
+      if (error?.errors[0]?.message) {
+        this.mapGoogleError(error);
       }
       throw error;
-    } finally {
-      this.finishUpload(currentUserId);
     }
   }
 
@@ -289,10 +78,11 @@ export class FilesSystemService {
     createfolderDto: CreateFolderDto,
   ): Promise<Folder> {
     try {
-      const folderName = await this.handleFolderNameConflict(
-        createfolderDto.parentFolderId,
-        createfolderDto.folderName,
-      );
+      const folderName =
+        await this.folderCommandService.handleFolderNameConflict(
+          createfolderDto.parentFolderId,
+          createfolderDto.folderName,
+        );
 
       const folder = await this.foldersRepository.create({
         folderName,
@@ -300,14 +90,7 @@ export class FilesSystemService {
         parentFolderId: createfolderDto.parentFolderId || null,
       });
 
-      const userStats = await this.statsRepository.findAllByCondition({
-        userId,
-      });
-
-      await this.statsRepository.updateByCondition(
-        { userId },
-        { folderCount: userStats[0].folderCount + 1 },
-      );
+      await this.statsRepository.incrementFolderCount(userId);
 
       return folder;
     } catch (error) {
@@ -319,61 +102,24 @@ export class FilesSystemService {
     currentUserId: UUID,
     fileId: UUID,
     res: FastifyReply,
-  ): Promise<never> {
+  ): Promise<void> {
     try {
-      const userWithRelatedEntity =
-        await this.usersRepository.findOneByConditionWithRelations<UserWithRelatedEntity>(
-          { id: currentUserId },
-          ['files'],
-        );
-
-      const file = userWithRelatedEntity.files.find(
-        (file) => file.id === fileId,
-      );
-
-      if (!file) {
-        throw new NotFoundException("File doesn't exist");
-      }
-      const user = userWithRelatedEntity.users[0];
-
-      const account = user.googleServiceAccounts.find((account) => {
-        return account.clientEmail === file.fileGoogleDriveClientEmail;
-      });
-
-      const { clientEmail, privateKey } = account;
-
-      await this.authenticate({ clientEmail, privateKey });
-
-      const meta = await this.driveService.files.get({
-        fileId: file.fileGoogleDriveId,
-        fields: 'name, mimeType',
-      });
-
-      if (!meta.data.name) {
-        throw new NotFoundException('File not found');
-      }
-
-      const fileName = meta.data.name;
-      const mimeType = meta.data.mimeType || 'application/octet-stream';
-
-      const fileStream = await this.driveService.files.get(
-        {
-          fileId: file.fileGoogleDriveId,
-          alt: 'media',
-        },
-        { responseType: 'stream' },
-      );
-
-      res.header('Content-Type', mimeType);
-      res.header(
-        'Content-Disposition',
-        `attachment; filename="${encodeURIComponent(fileName)}"`,
-      );
-      res.header('Content-Length', fileStream.headers['content-length']);
-      res.header('Access-Control-Expose-Headers', 'Content-Disposition');
-
-      return res.send(fileStream.data);
+      await this.fileTransferService.downloadFile(currentUserId, fileId, res);
     } catch (error) {
+      if (error?.errors[0]?.message) {
+        this.mapGoogleError(error);
+      }
+      throw error;
+    }
+  }
+
+  async streamPublicFile(fileId: UUID, res: FastifyReply): Promise<void> {
+    try {
+      return await this.fileTransferService.streamPublicFile(fileId, res);
+    } catch (error) {
+      if (error?.errors[0]?.message) {
+        this.mapGoogleError(error);
+      }
       throw error;
     }
   }
@@ -419,32 +165,24 @@ export class FilesSystemService {
     currentUserId: UUID,
     fileUpdateDto: UpdateFileDto,
   ): Promise<File> {
+    let driveService: drive_v3.Drive;
+    const requestBody: drive_v3.Schema$File = {};
     try {
-      const userWithRelatedEntity =
-        await this.usersRepository.findOneByConditionWithRelations<UserWithRelatedEntity>(
-          { id: currentUserId },
-          ['files'],
-        );
+      const [user, userFiles] = await Promise.all([
+        this.usersRepository.findById(currentUserId),
+        this.filesRepository.findAllByCondition({ userId: currentUserId }),
+      ]);
 
-      const file = userWithRelatedEntity.files.find(
-        (file) => file.id === fileUpdateDto.fileId,
-      );
+      const file = userFiles.find((file) => file.id === fileUpdateDto.fileId);
 
       if (!file) {
         throw new NotFoundException("File doesn't exist");
       }
 
-      const user = userWithRelatedEntity.users[0];
-
-      const account = user.googleServiceAccounts.find((account) => {
-        return account.clientEmail === file.fileGoogleDriveClientEmail;
-      });
-
-      const { clientEmail, privateKey } = account;
-
-      await this.authenticate({ clientEmail, privateKey });
-
-      const requestBody: drive_v3.Schema$File = {};
+      driveService = await this.googleDriveClient.getDrive(
+        user,
+        file.fileGoogleDriveClientEmail,
+      );
 
       if (fileUpdateDto.fileName) {
         requestBody.name = fileUpdateDto.fileName;
@@ -454,7 +192,7 @@ export class FilesSystemService {
         requestBody.description = fileUpdateDto.fileDescription;
       }
 
-      const response = await this.driveService.files.update({
+      const response = await driveService.files.update({
         fileId: file.fileGoogleDriveId,
         requestBody,
       });
@@ -468,21 +206,26 @@ export class FilesSystemService {
         return updatedFile;
       }
     } catch (error) {
+      if (error?.errors[0]?.message) {
+        this.mapGoogleError(error);
+      }
       throw error;
     }
   }
 
   async updateMany(
     currentUserId: UUID,
-    updateManyDto: UpdateManyDto[],
+    updateManyDto: updateMany,
   ): Promise<FileSystemItemChangeResult[]> {
+    let driveService: drive_v3.Drive;
     const result: FileSystemItemChangeResult[] = [];
     try {
-      const userWithRelatedEntity =
-        await this.usersRepository.findOneByConditionWithRelations<UserWithRelatedEntity>(
-          { id: currentUserId },
-          ['files', 'folders'],
-        );
+      const [user, userFiles, userFolders] = await Promise.all([
+        this.usersRepository.findById(currentUserId),
+        this.filesRepository.findAllByCondition({ userId: currentUserId }),
+        this.foldersRepository.findAllByCondition({ userId: currentUserId }),
+        ,
+      ]);
       const files: Map<
         string,
         (UpdateFileDto & {
@@ -500,7 +243,7 @@ export class FilesSystemService {
       updateManyDto.forEach((fileSystemItemToUpdate) => {
         let coincidence = false;
         if ('fileId' in fileSystemItemToUpdate) {
-          const existFile = userWithRelatedEntity.files.find((file) => {
+          const existFile = userFiles.find((file) => {
             return file.id === fileSystemItemToUpdate.fileId;
           });
           if (existFile) {
@@ -525,7 +268,7 @@ export class FilesSystemService {
           }
         }
         if ('folderId' in fileSystemItemToUpdate) {
-          const existFolder = userWithRelatedEntity.folders.find((folder) => {
+          const existFolder = userFolders.find((folder) => {
             return folder.id === fileSystemItemToUpdate.folderId;
           });
           if (existFolder) {
@@ -549,15 +292,12 @@ export class FilesSystemService {
         }
       });
 
-      const user = userWithRelatedEntity.users[0];
       if (files.size > 0) {
         for (const [key, value] of files) {
           let executeUpdateFiles: Promise<void>[];
-          const account = user.googleServiceAccounts.find((account) => {
-            return account.clientEmail === key;
-          });
-          const { clientEmail, privateKey } = account;
-          await this.authenticate({ clientEmail, privateKey });
+
+          driveService = await this.googleDriveClient.getDrive(user, key);
+
           executeUpdateFiles = value.map(async (fileToUpdate) => {
             try {
               const requestBody: drive_v3.Schema$File = {};
@@ -570,7 +310,7 @@ export class FilesSystemService {
                 requestBody.description = fileToUpdate.fileDescription;
               }
 
-              const response = await this.driveService.files.update({
+              const response = await driveService.files.update({
                 fileId: fileToUpdate.fileGoogleDriveId,
                 requestBody,
               });
@@ -644,49 +384,44 @@ export class FilesSystemService {
       }
       return result;
     } catch (error) {
+      if (error?.errors[0]?.message) {
+        this.mapGoogleError(error);
+      }
       throw error;
     }
   }
 
   async deleteFile(currentUserId: UUID, fileId: string): Promise<File> {
+    let driveService: drive_v3.Drive;
     try {
-      const userWithRelatedEntity =
-        await this.usersRepository.findOneByConditionWithRelations<UserWithRelatedEntity>(
-          { id: currentUserId },
-          ['files', 'stats'],
-        );
+      const [user, userFiles] = await Promise.all([
+        this.usersRepository.findById(currentUserId),
+        this.filesRepository.findAllByCondition({ userId: currentUserId }),
+      ]);
 
-      const file = userWithRelatedEntity.files.find(
-        (file) => file.id === fileId,
-      );
+      const file = userFiles.find((file) => file.id === fileId);
 
       if (!file) {
         throw new NotFoundException("File doesn't exist");
       }
 
-      const user = userWithRelatedEntity.users[0];
-      const stats = userWithRelatedEntity.stats[0];
+      driveService = await this.googleDriveClient.getDrive(
+        user,
+        file.fileGoogleDriveClientEmail,
+      );
 
-      const account = user.googleServiceAccounts.find((account) => {
-        return account.clientEmail === file.fileGoogleDriveClientEmail;
-      });
-
-      const { clientEmail, privateKey } = account;
-
-      await this.authenticate({ clientEmail, privateKey });
-
-      const response = await this.driveService.files.delete({
+      const response = await driveService.files.delete({
         fileId: file.fileGoogleDriveId,
       });
 
       if (response.status === 204) {
-        await this.statsRepository.updateByCondition(
-          { userId: user.id },
-          { fileCount: stats.fileCount - 1 },
-        );
+        await this.statsRepository.decrementFolderCount(user.id);
         return await this.filesRepository.deleteById(file.id);
       }
     } catch (error) {
+      if (error?.errors[0]?.message) {
+        this.mapGoogleError(error);
+      }
       throw error;
     }
   }
@@ -696,35 +431,27 @@ export class FilesSystemService {
     folderId: UUID,
   ): Promise<FileSystemItemChangeResult[]> {
     try {
-      const userWithRelatedEntity =
-        await this.usersRepository.findOneByConditionWithRelations<UserWithRelatedEntity>(
-          { id: currentUserId },
-          ['folders', 'stats'],
-        );
+      const [user, userFolders] = await Promise.all([
+        this.usersRepository.findById(currentUserId),
+        this.foldersRepository.findAllByCondition({ userId: currentUserId }),
+      ]);
 
-      const folder = userWithRelatedEntity.folders.find(
-        (folder) => folder.id === folderId,
-      );
+      const folder = userFolders.find((folder) => folder.id === folderId);
 
       if (!folder) {
         throw new NotFoundException("Folder doesn't exist");
       }
 
-      const userStat = userWithRelatedEntity.stats[0];
-
-      const result = await this.deleteFolderRecursively(
+      const result = await this.folderCommandService.deleteFolderRecursively(
         currentUserId,
         folderId,
-        userWithRelatedEntity.users[0].googleServiceAccounts,
+        user,
       );
 
-      await this.statsRepository.updateByCondition(
-        { userId: currentUserId },
-        {
-          folderCount: userStat.folderCount - result.deletedFoldersAll.length,
-          fileCount: userStat.fileCount - result.deletedFilesAll.length,
-        },
-      );
+      await this.statsRepository.decrementStats(currentUserId, {
+        folderCount: result.deletedFoldersAll.length,
+        fileCount: result.deletedFilesAll.length,
+      });
 
       return result.result;
     } catch (error) {
@@ -736,6 +463,7 @@ export class FilesSystemService {
     currentUserId: UUID,
     deleteManyDto: DeleteMany,
   ): Promise<FileSystemItemChangeResult[]> {
+    let driveService: drive_v3.Drive;
     let result: FileSystemItemChangeResult[] = [];
     let deletedFilesAll: File[] = [];
     let deletedFoldersAll: Folder[] = [];
@@ -745,17 +473,17 @@ export class FilesSystemService {
     const filesToDeleteFromDB: string[] = [];
 
     try {
-      const userWithRelatedEntity =
-        await this.usersRepository.findOneByConditionWithRelations<UserWithRelatedEntity>(
-          { id: currentUserId },
-          ['files', 'folders', 'stats'],
-        );
+      const [user, userFiles, userFolders] = await Promise.all([
+        this.usersRepository.findById(currentUserId),
+        this.filesRepository.findAllByCondition({ userId: currentUserId }),
+        this.foldersRepository.findAllByCondition({ userId: currentUserId }),
+      ]);
 
       deleteManyDto.forEach((fileSystemItemToDelete) => {
         let coincidence = false;
 
         if ('fileId' in fileSystemItemToDelete) {
-          const existFile = userWithRelatedEntity.files.find((file) => {
+          const existFile = userFiles.find((file) => {
             return file.id === fileSystemItemToDelete.fileId;
           });
 
@@ -778,7 +506,7 @@ export class FilesSystemService {
         }
 
         if ('folderId' in fileSystemItemToDelete) {
-          const existFolder = userWithRelatedEntity.folders.find((folder) => {
+          const existFolder = userFolders.find((folder) => {
             return folder.id === fileSystemItemToDelete.folderId;
           });
 
@@ -803,23 +531,15 @@ export class FilesSystemService {
         }
       });
 
-      const user = userWithRelatedEntity.users[0];
-      const stats = userWithRelatedEntity.stats[0];
       if (files.size > 0) {
         for (const [key, value] of files) {
           let executeDeleteFiles: Promise<void>[];
 
-          const account = user.googleServiceAccounts.find((account) => {
-            return account.clientEmail === key;
-          });
-
-          const { clientEmail, privateKey } = account;
-
-          await this.authenticate({ clientEmail, privateKey });
+          driveService = await this.googleDriveClient.getDrive(user, key);
 
           executeDeleteFiles = value.map(async (fileToDelete) => {
             try {
-              const response = await this.driveService.files.delete({
+              const response = await driveService.files.delete({
                 fileId: fileToDelete.fileGoogleDriveId,
               });
 
@@ -866,11 +586,12 @@ export class FilesSystemService {
       if (folders.length > 0) {
         const executeDeleteFolders: Promise<void>[] = folders.map(
           async (folderId) => {
-            const recursiveResult = await this.deleteFolderRecursively(
-              currentUserId,
-              folderId,
-              user.googleServiceAccounts,
-            );
+            const recursiveResult =
+              await this.folderCommandService.deleteFolderRecursively(
+                currentUserId,
+                folderId,
+                user,
+              );
 
             result = result.concat(recursiveResult.result);
             deletedFilesAll = deletedFilesAll.concat(
@@ -885,470 +606,76 @@ export class FilesSystemService {
         await Promise.allSettled(executeDeleteFolders);
       }
 
-      await this.statsRepository.updateByCondition(
-        { userId: currentUserId },
-        {
-          fileCount: stats.fileCount - deletedFilesAll.length,
-          folderCount: stats.folderCount - deletedFoldersAll.length,
-        },
-      );
+      await this.statsRepository.decrementStats(currentUserId, {
+        fileCount: deletedFilesAll.length,
+        folderCount: deletedFoldersAll.length,
+      });
 
       return result;
     } catch (error) {
+      if (error?.errors[0]?.message) {
+        this.mapGoogleError(error);
+      }
       throw error;
     }
   }
 
-  async createFilePermissions(
+  async createFilePublicPermission(
     currentUserId: UUID,
     createFilePermissionsDto: CreateFilePermissionsDto,
   ): Promise<File> {
     try {
-      const fileWithRelations =
-        await this.filesRepository.findOneByConditionWithRelations<FileWithRelatedEntity>(
-          {
-            userId: currentUserId,
-            id: createFilePermissionsDto.fileId,
-          },
-          ['user'],
-        );
-
-      const file = fileWithRelations.files[0];
-      const user = fileWithRelations.users[0];
-
-      const account = user.googleServiceAccounts.find((account) => {
-        return account.clientEmail === file.fileGoogleDriveClientEmail;
-      });
-
-      const { clientEmail, privateKey } = account;
-
-      await this.authenticate({ clientEmail, privateKey });
-      await this.driveService.permissions.create({
-        fileId: file.fileGoogleDriveId,
-        requestBody: {
-          role: createFilePermissionsDto.role,
-          type: 'anyone',
-        },
-      });
-
-      return await this.filesRepository.updateById(file.id, {
-        isPublic: true,
-      });
+      return await this.permissionsService.createFilePublicPermission(
+        currentUserId,
+        createFilePermissionsDto,
+      );
     } catch (error) {
+      if (error?.errors[0]?.message) {
+        this.mapGoogleError(error);
+      }
       throw error;
     }
   }
 
-  async deleteFilePermissions(
+  async deleteFilePublicPermissions(
     currentUserId: UUID,
     fileId: UUID,
   ): Promise<File> {
-    const fileWithRelations =
-      await this.filesRepository.findOneByConditionWithRelations<FileWithRelatedEntity>(
-        {
-          userId: currentUserId,
-          id: fileId,
-        },
-        ['user'],
+    try {
+      return await this.permissionsService.deleteFilePublicPermissions(
+        currentUserId,
+        fileId,
       );
-    const file = fileWithRelations.files[0];
-    const user = fileWithRelations.users[0];
-
-    const account = user.googleServiceAccounts.find((account) => {
-      return account.clientEmail === file.fileGoogleDriveClientEmail;
-    });
-    const { clientEmail, privateKey } = account;
-
-    await this.authenticate({ clientEmail, privateKey });
-
-    const permissions = await this.driveService.permissions.list({
-      fileId: file.fileGoogleDriveId,
-    });
-
-    const publicPermission = permissions.data.permissions.find(
-      (permission) => permission.type === 'anyone',
-    );
-
-    if (publicPermission) {
-      await this.driveService.permissions.delete({
-        fileId: file.fileGoogleDriveId,
-        permissionId: publicPermission.id,
-      });
+    } catch (error) {
+      if (error?.errors[0]?.message) {
+        this.mapGoogleError(error);
+      }
+      throw error;
     }
-    return await this.filesRepository.updateById(file.id, {
-      isPublic: false,
-    });
   }
 
   uploadProgress(
     currentUserId: UUID,
     fileUploadId: string = '',
   ): Observable<MessageEvent> {
-    const [emitter] = this.getOrCreateEmitter(currentUserId, fileUploadId);
-
-    emitter.removeAllListeners(emitterEventName.UPLOAD_PROGRESS);
-
-    return new Observable((observer) => {
-      const handler = (progress: FileUploadEvent) => {
-        switch (progress.status) {
-          case UploadStatus.UPLOADING:
-            observer.next({
-              data: progress,
-            } as MessageEvent);
-            break;
-          case UploadStatus.COMPLETED:
-            observer.next({
-              data: progress,
-            } as MessageEvent);
-            emitter.off(emitterEventName.UPLOAD_PROGRESS, handler);
-            observer.complete();
-            break;
-          case UploadStatus.FAILED:
-            observer.error({
-              data: progress,
-            } as MessageEvent);
-            emitter.off(emitterEventName.UPLOAD_PROGRESS, handler);
-            observer.complete();
-            break;
-        }
-      };
-      emitter.on(emitterEventName.UPLOAD_PROGRESS, handler);
-
-      return () => {
-        emitter.off(emitterEventName.UPLOAD_PROGRESS, handler);
-      };
-    });
-  }
-  async authenticate(authDto: GoogleAuthDto): Promise<drive_v3.Drive> {
-    try {
-      const auth = new google.auth.GoogleAuth({
-        credentials: {
-          client_email: authDto.clientEmail,
-          private_key: authDto.privateKey.replace(/\\n/g, '\n'),
-        },
-        scopes: ['https://www.googleapis.com/auth/drive'],
-      });
-
-      this.driveService = google.drive({ version: 'v3', auth });
-
-      return google.drive({ version: 'v3', auth });
-    } catch (error) {
-      throw error;
-    }
+    return this.fileTransferService.uploadProgress(currentUserId, fileUploadId);
   }
 
-  private async handleFileNameConflict(
-    parentFolderId: string | null,
-    name: string,
-    userChoice: NameConflictChoice = NameConflictChoice.RENAME,
-  ): Promise<string> {
-    let innerEntity: File;
+  private mapGoogleError(error: any): never {
+    const message =
+      error?.response?.data?.error?.message ||
+      error?.errors?.[0]?.message ||
+      'Google API error';
 
-    let uniqueName = name;
-    try {
-      try {
-        innerEntity = await this.filesRepository.findOneByCondition({
-          parentFolderId,
-          fileName: uniqueName,
-        });
-      } catch (error) {
-        if (!(error instanceof NotFoundException)) {
-          throw new InternalServerErrorException(error, { cause: error });
-        }
-      }
-
-      if (innerEntity) {
-        if (userChoice === NameConflictChoice.RENAME) {
-          let counter = 1;
-          while (true) {
-            const extension = uniqueName.split('.').pop() || '';
-            const nameWithoutExtension = uniqueName.slice(
-              0,
-              -(extension.length ? extension.length + 1 : 0),
-            );
-            const baseName = nameWithoutExtension.replace(/\s\(\d+\)$/, '');
-            uniqueName = `${baseName} (${counter}).${extension}`;
-
-            counter++;
-            try {
-              innerEntity = await this.filesRepository.findOneByCondition({
-                parentFolderId,
-                fileName: uniqueName,
-              });
-            } catch (error) {
-              if (!(error instanceof NotFoundException)) {
-                throw new InternalServerErrorException(error);
-              }
-              innerEntity = null;
-            }
-
-            if (!innerEntity) {
-              return uniqueName;
-            }
-          }
-        }
-
-        if (userChoice === NameConflictChoice.OVERWRITE) {
-          try {
-            await this.filesRepository.deleteById(innerEntity.id);
-          } catch (error) {
-            throw error;
-          }
-
-          return uniqueName;
-        }
-      }
-
-      return uniqueName;
-    } catch (error) {
-      throw new Error(`Failed to handle file conflict: ${error.message}`);
-    }
-  }
-
-  private async handleFolderNameConflict(
-    parentFolderId: string | null,
-    name: string,
-    userChoice: NameConflictChoice = NameConflictChoice.RENAME,
-  ): Promise<string> {
-    let innerEntity: File | Folder;
-
-    let uniqueName = name;
-    try {
-      try {
-        innerEntity = await this.foldersRepository.findOneByCondition({
-          parentFolderId,
-          folderName: uniqueName,
-        });
-      } catch (error) {
-        if (!(error instanceof NotFoundException)) {
-          throw new InternalServerErrorException(error);
-        }
-      }
-
-      if (innerEntity) {
-        if (userChoice === NameConflictChoice.RENAME) {
-          let counter = 1;
-          while (true) {
-            const baseName = uniqueName.replace(/\s\(\d+\)$/, '');
-            uniqueName = `${baseName} (${counter})`;
-
-            counter++;
-            try {
-              innerEntity = await this.foldersRepository.findOneByCondition({
-                parentFolderId,
-                folderName: uniqueName,
-              });
-            } catch (error) {
-              if (!(error instanceof NotFoundException)) {
-                throw new InternalServerErrorException(error, { cause: error });
-              }
-              innerEntity = null;
-            }
-
-            if (!innerEntity) {
-              return uniqueName;
-            }
-          }
-        }
-
-        if (userChoice === NameConflictChoice.OVERWRITE) {
-          try {
-            await this.foldersRepository.deleteById(innerEntity.id);
-          } catch (error) {
-            throw error;
-          }
-
-          return uniqueName;
-        }
-      }
-
-      return uniqueName;
-    } catch (error) {
-      throw new Error(`Failed to handle file conflict: ${error.message}`, {
-        cause: error,
-      });
-    }
-  }
-
-  private getOrCreateEmitter(
-    userId: string,
-    fileUploadId: string,
-  ): [EventEmitter, string] {
-    const key = `${userId}-${fileUploadId}`;
-    if (!this.uploadEmitters.has(key)) {
-      const emitter = new EventEmitter();
-
-      this.uploadEmitters.set(key, emitter);
-    }
-
-    return [this.uploadEmitters.get(key), key];
-  }
-
-  private startUpload(userId: string): boolean {
-    const current = this.activeUploads.get(userId) || 0;
-
-    if (current >= this.maxUploadsPerUser) {
-      return false;
-    }
-
-    this.activeUploads.set(userId, current + 1);
-    return true;
-  }
-
-  private finishUpload(userId: string) {
-    const current = this.activeUploads.get(userId) || 0;
-    if (current <= 1) {
-      this.activeUploads.delete(userId);
-    }
-    this.activeUploads.set(userId, current - 1);
-  }
-
-  private async deleteFolderRecursively(
-    currentUserId: UUID,
-    folderId: string,
-    userGoogleServiceAccounts: {
-      clientEmail: string;
-      privateKey: string;
-      rootFolderId?: string;
-    }[],
-  ): Promise<DeleteFolderRecursivelyResult> {
-    let files: File[];
-    let subFolders: Folder[];
-    let result: FileSystemItemChangeResult[] = [];
-    const filesToDeleteFromDB: string[] = [];
-    let deletedFilesAll: File[] = [];
-    let deletedFoldersAll: Folder[] = [];
-    try {
-      try {
-        files = await this.filesRepository.findAllByCondition({
-          userId: currentUserId,
-          parentFolderId: folderId,
-        });
-      } catch (error) {
-        if (error instanceof NotFoundException) {
-          files = [];
-        } else {
-          throw error;
-        }
-      }
-      if (files.length > 0) {
-        const filesMap: Map<
-          string,
-          { fileId: string; fileGoogleDriveId: string }[]
-        > = new Map();
-        files.forEach((file) => {
-          const mapValue = filesMap.get(file.fileGoogleDriveClientEmail)
-            ? filesMap.get(file.fileGoogleDriveClientEmail).concat({
-                fileId: file.id,
-                fileGoogleDriveId: file.fileGoogleDriveId,
-              })
-            : [
-                {
-                  fileId: file.id,
-                  fileGoogleDriveId: file.fileGoogleDriveId,
-                },
-              ];
-          filesMap.set(file.fileGoogleDriveClientEmail, mapValue);
-        });
-
-        for (const [key, value] of filesMap) {
-          const account = userGoogleServiceAccounts.find((account) => {
-            return account.clientEmail === key;
-          });
-
-          const { clientEmail, privateKey } = account;
-
-          await this.authenticate({ clientEmail, privateKey });
-
-          const executeDeleteFiles: Promise<void>[] = value.map(
-            async (fileToDelete) => {
-              try {
-                const response = await this.driveService.files.delete({
-                  fileId: fileToDelete.fileGoogleDriveId,
-                });
-
-                if (response.status === 204) {
-                  filesToDeleteFromDB.push(fileToDelete.fileId);
-                }
-              } catch (error) {
-                result.push({
-                  fileId: fileToDelete.fileId,
-                  status: 'error',
-                });
-              }
-            },
-          );
-          await Promise.allSettled(executeDeleteFiles);
-        }
-
-        const deletedFiles =
-          await this.filesRepository.deleteManyById(filesToDeleteFromDB);
-
-        deletedFiles.forEach((deletedFile) => {
-          result.push({
-            fileId: deletedFile.id,
-            status: 'success',
-          });
-        });
-        deletedFilesAll = deletedFilesAll.concat(deletedFiles);
-
-        if (deletedFiles.length < filesToDeleteFromDB.length) {
-          filesToDeleteFromDB.forEach((folderIdToDelete) => {
-            const deletedFolder = deletedFiles.some((deletedFolder) => {
-              deletedFolder.id === folderIdToDelete;
-            });
-            if (!deletedFolder) {
-              result.push({
-                folderId: folderIdToDelete,
-                status: 'error',
-              });
-            }
-          });
-        }
-      }
-
-      try {
-        subFolders = await this.foldersRepository.findAllByCondition({
-          userId: currentUserId,
-          parentFolderId: folderId,
-        });
-      } catch (error) {
-        if (error instanceof NotFoundException) {
-          subFolders = [];
-        } else {
-          throw error;
-        }
-      }
-
-      if (subFolders.length > 0) {
-        for (const subFolder of subFolders) {
-          const recursiveResult = await this.deleteFolderRecursively(
-            currentUserId,
-            subFolder.id,
-            userGoogleServiceAccounts,
-          );
-
-          result = result.concat(recursiveResult.result);
-          deletedFilesAll = deletedFilesAll.concat(
-            recursiveResult.deletedFilesAll,
-          );
-          deletedFoldersAll = deletedFoldersAll.concat(
-            recursiveResult.deletedFoldersAll,
-          );
-        }
-      }
-
-      const deletedFolder = await this.foldersRepository.deleteById(folderId);
-      result.push({
-        folderId: deletedFolder.id,
-        status: 'success',
-      });
-
-      deletedFoldersAll = deletedFoldersAll.concat(deletedFolder);
-
-      return { result, deletedFilesAll, deletedFoldersAll };
-    } catch (error) {
-      throw error;
+    switch (error?.response?.status) {
+      case 403:
+        throw new ForbiddenException(message);
+      case 404:
+        throw new NotFoundException(message);
+      case 400:
+        throw new BadRequestException(message);
+      default:
+        throw new InternalServerErrorException(message);
     }
   }
 }

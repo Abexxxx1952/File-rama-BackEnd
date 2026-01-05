@@ -10,10 +10,18 @@ import { AttachedUser } from '../types/attachedUser';
 
 @Injectable()
 export class AccessTokenAuthGuardFromHeadersAndCookies {
+  private readonly accessTokenSecret: string;
+  private readonly accessTokenName: string;
   constructor(
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
-  ) {}
+  ) {
+    this.accessTokenSecret = this.configService.getOrThrow<string>(
+      'JWT_ACCESS_TOKEN_SECRET',
+    );
+    this.accessTokenName =
+      this.configService.getOrThrow<string>('ACCESS_TOKEN_NAME');
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<FastifyRequest>();
@@ -28,9 +36,7 @@ export class AccessTokenAuthGuardFromHeadersAndCookies {
 
     try {
       const payload = await this.jwtService.verifyAsync(accessToken, {
-        secret: this.configService.getOrThrow<string>(
-          'JWT_ACCESS_TOKEN_SECRET',
-        ),
+        secret: this.accessTokenSecret,
       });
 
       request.user = this.validate(payload);
@@ -49,9 +55,7 @@ export class AccessTokenAuthGuardFromHeadersAndCookies {
   }
 
   private extractTokenFromCookies(request: FastifyRequest): string | null {
-    const cookieName =
-      this.configService.getOrThrow<string>('ACCESS_TOKEN_NAME');
-    return request.cookies?.[cookieName] || null;
+    return request.cookies?.[this.accessTokenName] || null;
   }
 
   private validate(payload: any): AttachedUser {

@@ -2,12 +2,15 @@ import fastifyCookie from '@fastify/cookie';
 import fastifyHelmet from '@fastify/helmet';
 import fastifyMultipart from '@fastify/multipart';
 import { ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import {
   FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
+import { getCorsOptions } from './configs/cors.config';
+import { getHelmetOptions } from './configs/helmet.config';
 import { createSwagger } from './swagger/swagger';
 
 async function bootstrap() {
@@ -16,13 +19,10 @@ async function bootstrap() {
     new FastifyAdapter(),
   );
 
-  app.enableCors({
-    origin: [process.env.CLIENT_DOMAIN_URL ?? 'http://localhost:3000'],
-    credentials: true,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-  });
+  const configService = app.get(ConfigService);
+  app.enableCors(getCorsOptions(configService));
 
-  app.setGlobalPrefix(process.env.PREFIX_URL || 'api');
+  app.setGlobalPrefix(configService.getOrThrow<string>('PREFIX_URL') || 'api');
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -31,16 +31,7 @@ async function bootstrap() {
     }),
   );
 
-  await app.register(fastifyHelmet, {
-    crossOriginEmbedderPolicy: false,
-    frameguard: { action: 'deny' },
-    hidePoweredBy: true,
-    hsts: true,
-    ieNoOpen: true,
-    noSniff: true,
-    referrerPolicy: { policy: 'no-referrer' },
-    xssFilter: true,
-  });
+  await app.register(fastifyHelmet, getHelmetOptions());
 
   await app.register(fastifyCookie);
   await app.register(fastifyMultipart, {

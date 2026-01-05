@@ -1,4 +1,5 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { TOKENS_REPOSITORY } from '@/configs/providersTokens';
 import { MailService } from '@/mail/mail.service';
 import { TokensRepository } from '../repository/tokens.repository';
 import { Token, TokenTypeEnum } from '../types/token';
@@ -6,7 +7,7 @@ import { Token, TokenTypeEnum } from '../types/token';
 @Injectable()
 export class TwoFactorAuthService {
   public constructor(
-    @Inject('TokensRepository')
+    @Inject(TOKENS_REPOSITORY)
     private readonly tokensRepository: TokensRepository,
     private readonly mailService: MailService,
   ) {}

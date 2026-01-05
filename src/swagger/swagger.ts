@@ -10,5 +10,7 @@ export function createSwagger(app: INestApplication) {
     .addTag('File Rama API')
     .build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, document);
+  SwaggerModule.setup('docs', app, document, {
+    jsonDocumentUrl: 'openapi.json',
+  });
 }

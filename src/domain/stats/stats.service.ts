@@ -1,18 +1,19 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { UUID } from 'crypto';
+import { STATS_REPOSITORY, USERS_REPOSITORY } from '@/configs/providersTokens';
 import { UsersRepository } from '@/domain/users/repository/users.repository';
-import { FilesSystemService } from '../filesSystem/filesSystem.service';
+import { GoogleDriveClient } from '../filesSystem/services/googleDriveClient/googleDriveClient';
 import { StatsRepository } from './repository/stats.repository';
 import type { DriveInfoResult } from './types/driveInfoResult';
 
 @Injectable()
 export class StatsService {
   constructor(
-    @Inject('StatsRepository')
+    @Inject(STATS_REPOSITORY)
     private readonly statsRepository: StatsRepository,
-    @Inject('UsersRepository')
+    @Inject(USERS_REPOSITORY)
     private readonly usersRepository: UsersRepository,
-    private readonly filesSystemService: FilesSystemService,
+    private readonly googleDriveClient: GoogleDriveClient,
   ) {}
   async getGoogleDriveInfo(userId: UUID): Promise<DriveInfoResult[]> {
     const result: DriveInfoResult[] = [];
@@ -24,7 +25,7 @@ export class StatsService {
       for (const account of user.googleServiceAccounts) {
         const { clientEmail, privateKey } = account;
 
-        const driveService = await this.filesSystemService.authenticate({
+        const driveService = await this.googleDriveClient.authenticate({
           clientEmail,
           privateKey,
         });

@@ -1,6 +1,7 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+import { TOKENS_REPOSITORY } from '@/configs/providersTokens';
 import { DatabaseModule } from '@/database/database.module';
 import { UsersModule } from '../users.module';
 import { AuthController } from './auth.controller';
@@ -24,10 +25,10 @@ import { TwoFactorAuthModule } from './two-factor-auth/two-factor-auth.module';
   providers: [
     AuthService,
     {
-      provide: 'TokensRepository',
+      provide: TOKENS_REPOSITORY,
       useClass: TokensRepository,
     },
   ],
-  exports: ['TokensRepository'],
+  exports: [TOKENS_REPOSITORY],
 })
 export class AuthModule {}

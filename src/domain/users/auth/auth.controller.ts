@@ -1,6 +1,5 @@
 import {
   Body,
-  ClassSerializerInterceptor,
   Controller,
   Get,
   HttpCode,
@@ -23,6 +22,7 @@ import {
   CacheOptionInvalidateCache,
   CacheOptions,
 } from '../../../common/interceptors/cache.interceptor';
+import { USERS_REPOSITORY } from '../../../configs/providersTokens';
 import {
   ApiUsersGetLoginGitHub,
   ApiUsersGetLoginGitHubCallback,
@@ -55,7 +55,7 @@ import { AttachedUser } from './types/attachedUser';
 @Controller('v1/auth')
 export class AuthController {
   constructor(
-    @Inject('UsersRepository')
+    @Inject(USERS_REPOSITORY)
     private readonly usersRepository: UsersRepository,
     private readonly authService: AuthService,
   ) {}
@@ -63,7 +63,6 @@ export class AuthController {
   @Get('status')
   @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
   @UseInterceptors(new TransformResultInterceptor(User))
-  @UseInterceptors(ClassSerializerInterceptor)
   @HttpCode(HttpStatus.OK)
   @ApiUsersGetStatus()
   async status(@CurrentUser() currentUser: AttachedUser): Promise<User> {
@@ -74,7 +73,6 @@ export class AuthController {
   @Recaptcha()
   @ParseRequestBodyWhenLogging(CreateUserDtoLocalWithoutPassword)
   @UseInterceptors(new TransformResultInterceptor(User))
-  @UseInterceptors(ClassSerializerInterceptor)
   @HttpCode(HttpStatus.CREATED)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
@@ -91,7 +89,6 @@ export class AuthController {
   @UseGuards(LocalAuthGuard)
   @ParseRequestBodyWhenLogging(LoginLocalUserDtoWithoutPassword)
   @UseInterceptors(new TransformResultInterceptor(User))
-  @UseInterceptors(ClassSerializerInterceptor)
   @HttpCode(HttpStatus.OK)
   @ApiUsersPostLoginLocal()
   async loginLocal(

@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
+import { TOKENS_REPOSITORY, USERS_REPOSITORY } from '@/configs/providersTokens';
 import { MailService } from '@/mail/mail.service';
 import { UsersRepository } from '../../repository/users.repository';
 import { TokensRepository } from '../repository/tokens.repository';
@@ -15,9 +16,9 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 @Injectable()
 export class PasswordRecoveryService {
   public constructor(
-    @Inject('TokensRepository')
+    @Inject(TOKENS_REPOSITORY)
     private readonly tokensRepository: TokensRepository,
-    @Inject('UsersRepository')
+    @Inject(USERS_REPOSITORY)
     private readonly usersRepository: UsersRepository,
     private readonly mailService: MailService,
   ) {}

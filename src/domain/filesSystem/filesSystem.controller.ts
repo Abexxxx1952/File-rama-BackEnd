@@ -28,15 +28,21 @@ import {
   CacheOptionInvalidateCache,
   CacheOptions,
 } from '@/common/interceptors/cache.interceptor';
+import {
+  FILES_REPOSITORY,
+  FOLDERS_REPOSITORY,
+} from '@/configs/providersTokens';
 import { PaginationParams } from '@/database/paginationDto/pagination.dto';
 import {
   ApiFilesSystemDeleteDeleteFile,
   ApiFilesSystemDeleteDeleteFolder,
   ApiFilesSystemDeleteDeleteMany,
   ApiFilesSystemGet,
+  ApiFilesSystemGetDownloadFile,
   ApiFilesSystemGetFindPublicFiles,
-  ApiFilesSystemPatchCreateFilePermissions,
-  ApiFilesSystemPatchDeleteFilePermissions,
+  ApiFilesSystemGetStreamPublicFile,
+  ApiFilesSystemPatchCreateFilePublicPermissions,
+  ApiFilesSystemPatchDeleteFilePublicPermissions,
   ApiFilesSystemPatchUpdateFile,
   ApiFilesSystemPatchUpdateFolder,
   ApiFilesSystemPatchUpdateMany,
@@ -77,9 +83,9 @@ import { Folder } from './types/folder';
 export class FilesController {
   constructor(
     private readonly filesSystemService: FilesSystemService,
-    @Inject('FilesRepository')
+    @Inject(FILES_REPOSITORY)
     private readonly filesRepository: FilesRepository,
-    @Inject('FoldersRepository')
+    @Inject(FOLDERS_REPOSITORY)
     private readonly foldersRepository: FoldersRepository,
   ) {}
 
@@ -156,22 +162,6 @@ export class FilesController {
     );
   }
 
-  @Get('download/:fileId')
-  @HttpCode(HttpStatus.OK)
-  @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
-  @ApiFilesSystemGetFindPublicFiles()
-  async downloadFile(
-    @CurrentUser('id') currentUserId: UUID,
-    @Param('fileId', ParseUUIDPipe) fileId: UUID,
-    @Res({ passthrough: false }) res: FastifyReply,
-  ): Promise<never> {
-    return await this.filesSystemService.downloadFile(
-      currentUserId,
-      fileId,
-      res,
-    );
-  }
-
   @Post('createFile/:fileUploadId')
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
@@ -193,6 +183,32 @@ export class FilesController {
     );
   }
 
+  @Get('downloadFile/:fileId')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
+  @ApiFilesSystemGetDownloadFile()
+  async downloadFile(
+    @CurrentUser('id') currentUserId: UUID,
+    @Param('fileId', ParseUUIDPipe) fileId: UUID,
+    @Res({ passthrough: false }) res: FastifyReply,
+  ): Promise<void> {
+    return await this.filesSystemService.downloadFile(
+      currentUserId,
+      fileId,
+      res,
+    );
+  }
+
+  @Get('streamPublicFile/:fileId')
+  @HttpCode(HttpStatus.OK)
+  @ApiFilesSystemGetStreamPublicFile()
+  async streamPublicFile(
+    @Param('fileId', ParseUUIDPipe) fileId: UUID,
+    @Res({ passthrough: false }) res: FastifyReply,
+  ): Promise<void> {
+    return await this.filesSystemService.streamPublicFile(fileId, res);
+  }
+
   @Post('createFolder')
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
@@ -212,7 +228,7 @@ export class FilesController {
     );
   }
 
-  @Patch('createFilePermissions')
+  @Patch('createFilePublicPermissions')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
   @CacheOptionInvalidateCache({
@@ -220,18 +236,18 @@ export class FilesController {
     cacheKey: FILE_SYSTEM_ITEM_CHANGE_CACHE_INVALIDATE_PATHS,
   })
   @UseInterceptors(CacheInterceptor)
-  @ApiFilesSystemPatchCreateFilePermissions()
+  @ApiFilesSystemPatchCreateFilePublicPermissions()
   async createFilePermissions(
     @CurrentUser('id') currentUserId: UUID,
     @Body() createFilePermissionsDto: CreateFilePermissionsDto,
   ): Promise<File> {
-    return await this.filesSystemService.createFilePermissions(
+    return await this.filesSystemService.createFilePublicPermission(
       currentUserId,
       createFilePermissionsDto,
     );
   }
 
-  @Patch('deleteFilePermissions')
+  @Patch('deleteFilePublicPermissions')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
   @CacheOptionInvalidateCache({
@@ -239,14 +255,14 @@ export class FilesController {
     cacheKey: FILE_SYSTEM_ITEM_CHANGE_CACHE_INVALIDATE_PATHS,
   })
   @UseInterceptors(CacheInterceptor)
-  @ApiFilesSystemPatchDeleteFilePermissions()
+  @ApiFilesSystemPatchDeleteFilePublicPermissions()
   async deleteFilePermissions(
     @CurrentUser('id') currentUserId: UUID,
-    @Body() fileId: { fileId: UUID },
+    @Param('fileId', ParseUUIDPipe) fileId: UUID,
   ): Promise<File> {
-    return await this.filesSystemService.deleteFilePermissions(
+    return await this.filesSystemService.deleteFilePublicPermissions(
       currentUserId,
-      fileId.fileId,
+      fileId,
     );
   }
 
@@ -299,12 +315,9 @@ export class FilesController {
   @ApiFilesSystemPatchUpdateMany()
   async updateMany(
     @CurrentUser('id') currentUserId: UUID,
-    @Body() updateManyDto: UpdateManyDto[],
+    @Body() { updateMany }: UpdateManyDto,
   ): Promise<FileSystemItemChangeResult[]> {
-    return await this.filesSystemService.updateMany(
-      currentUserId,
-      updateManyDto,
-    );
+    return await this.filesSystemService.updateMany(currentUserId, updateMany);
   }
 
   @Delete('deleteFile')

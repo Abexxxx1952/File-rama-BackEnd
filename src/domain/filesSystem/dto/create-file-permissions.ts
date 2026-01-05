@@ -3,7 +3,7 @@ import { UUID } from 'crypto';
 
 export enum UpdateRole {
   READER = 'reader',
-  Writer = 'writer',
+  WRITER = 'writer',
 }
 
 export class CreateFilePermissionsDto {

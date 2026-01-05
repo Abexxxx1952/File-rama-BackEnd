@@ -11,6 +11,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { UUID } from 'crypto';
 import { CurrentUser } from '@/common/decorators/currentUser.decorator';
 import { CacheInterceptor } from '@/common/interceptors/cache.interceptor';
+import { STATS_REPOSITORY } from '@/configs/providersTokens';
 import { ApiStatsGet } from '@/swagger/stats';
 import { AccessTokenAuthGuardFromHeadersAndCookies } from '../users/auth/guards/access-token-from-headers-cookies.guard';
 import { StatsRepository } from './repository/stats.repository';
@@ -21,7 +22,7 @@ import { Stat } from './types/stat';
 @Controller('v1/stats')
 export class StatsController {
   constructor(
-    @Inject('StatsRepository')
+    @Inject(STATS_REPOSITORY)
     private readonly statsRepository: StatsRepository,
     private readonly statsService: StatsService,
   ) {}

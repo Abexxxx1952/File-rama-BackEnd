@@ -1,7 +1,8 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
-import { DatabaseModule } from '../../database/database.module';
+import { STATS_REPOSITORY } from '@/configs/providersTokens';
+import { DatabaseModule } from '@/database/database.module';
 import { FilesSystemModule } from '../filesSystem/filesSystem.module';
 import { UsersModule } from '../users/users.module';
 import { StatsRepository } from './repository/stats.repository';
@@ -20,10 +21,10 @@ import { StatsService } from './stats.service';
   providers: [
     StatsService,
     {
-      provide: 'StatsRepository',
+      provide: STATS_REPOSITORY,
       useClass: StatsRepository,
     },
   ],
-  exports: ['StatsRepository'],
+  exports: [STATS_REPOSITORY],
 })
 export class StatsModule {}

@@ -11,10 +11,19 @@ import { JwtPayload } from '../types/jwtPayload';
 
 @Injectable()
 export class RefreshTokenAuthGuardFromHeadersAndCookies {
+  private readonly refreshTokenName: string;
+  private readonly refreshTokenSecret: string;
+
   constructor(
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
-  ) {}
+  ) {
+    this.refreshTokenName =
+      this.configService.getOrThrow<string>('REFRESH_TOKEN_NAME');
+    this.refreshTokenSecret = this.configService.getOrThrow<string>(
+      'JWT_REFRESH_TOKEN_SECRET',
+    );
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<FastifyRequest>();
@@ -31,7 +40,7 @@ export class RefreshTokenAuthGuardFromHeadersAndCookies {
       const payload = await this.jwtService.verifyAsync<JwtPayload>(
         refreshToken,
         {
-          secret: this.configService.get<string>('JWT_REFRESH_TOKEN_SECRET'),
+          secret: this.refreshTokenSecret,
         },
       );
 
@@ -51,9 +60,7 @@ export class RefreshTokenAuthGuardFromHeadersAndCookies {
   }
 
   private extractTokenFromCookies(request: FastifyRequest): string | null {
-    const cookieName =
-      this.configService.getOrThrow<string>('REFRESH_TOKEN_NAME');
-    return request.cookies?.[cookieName] || null;
+    return request.cookies?.[this.refreshTokenName] || null;
   }
 
   private validate(

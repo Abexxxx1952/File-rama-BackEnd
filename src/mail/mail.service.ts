@@ -8,20 +8,24 @@ import { TwoFactorAuthTemplate } from './templates/two-factor-auth.template';
 
 @Injectable()
 export class MailService {
+  private readonly clientDomainUrl: string;
   public constructor(
     private readonly configService: ConfigService,
     private readonly mailerService: MailerService,
-  ) {}
+  ) {
+    this.clientDomainUrl =
+      this.configService.getOrThrow<string>('CLIENT_DOMAIN_URL');
+  }
 
   public async sendConfirmationEmail(email: string, token: string) {
-    const domain = this.configService.getOrThrow<string>('CLIENT_DOMAIN_URL');
+    const domain = this.clientDomainUrl;
     const html = await render(ConfirmationTemplate({ domain, token }));
 
     return this.sendMail(email, 'Email confirmation', html);
   }
 
   public async sendPasswordResetEmail(email: string, token: string) {
-    const domain = this.configService.getOrThrow<string>('CLIENT_DOMAIN_URL');
+    const domain = this.clientDomainUrl;
     const html = await render(ResetPasswordTemplate({ domain, token }));
 
     return this.sendMail(email, 'Password reset', html);

@@ -1,11 +1,11 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { UUID } from 'crypto';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { FILES_REPOSITORY } from '@/configs/providersTokens';
+import { DATABASE_CONNECTION } from '@/configs/providersTokens';
 import { BaseAbstractRepository } from '@/database/abstractRepository/base.abstract.repository';
-import { DATABASE_CONNECTION } from '@/database/database.module';
 import { UpdateFolderDto } from '../dto/update-folder.dto';
 import { foldersSchema } from '../schema/folder.schema';
-import { File } from '../types/file';
 import { Folder } from '../types/folder';
 import { FilesRepository } from './files.repository';
 
@@ -19,7 +19,7 @@ export class FoldersRepository extends BaseAbstractRepository<
     public readonly database: NodePgDatabase<
       Record<'folders', typeof foldersSchema>
     >,
-    @Inject('FilesRepository')
+    @Inject(FILES_REPOSITORY)
     private readonly filesRepository: FilesRepository,
   ) {
     super(database, foldersSchema, 'Folder');

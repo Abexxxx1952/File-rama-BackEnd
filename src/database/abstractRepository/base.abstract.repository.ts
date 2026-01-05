@@ -297,10 +297,10 @@ export abstract class BaseAbstractRepository<
         .where(and(...conditions))
         .$dynamic();
 
-      if (offset !== undefined || offset !== null) {
+      if (offset !== undefined && offset !== null) {
         query = query.offset(offset);
       }
-      if (limit !== undefined || limit !== null) {
+      if (limit !== undefined && limit !== null) {
         query = query.limit(limit);
       }
 
