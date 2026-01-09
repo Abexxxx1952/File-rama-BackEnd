@@ -80,7 +80,7 @@ export function ApiFilesSystemGet() {
           fileName:
             'rimkhamart1_Mechanical_PhoenixCreate_a_futuristic_robotic_versi_d8bb0f01-fce3-4f11-8c77-cb1083cda2ef(1) (1).png',
           fileExtension: 'png',
-          fileSize: '1677427',
+          fileSize: 1677427,
           parentFolderId: null,
           fileGoogleDriveId: '1gfxg4JdtiuihHop1yCnEbmwM_COVLZo-',
           fileGoogleDriveParentFolderId: '1kM_yeDo1Ib3cWGWNRvugWsXeHGxuUS_F',
@@ -100,7 +100,7 @@ export function ApiFilesSystemGet() {
           fileName:
             'rimkhamart1_Mechanical_PhoenixCreate_a_futuristic_robotic_versi_d8bb0f01-fce3-4f11-8c77-cb1083cda2ef(1).png',
           fileExtension: 'png',
-          fileSize: '1677427',
+          fileSize: 1677427,
           parentFolderId: null,
           fileGoogleDriveId: '1y59NXgEclDDwjkk8OE7iPbA6oJJfuqcx',
           fileGoogleDriveParentFolderId: '1kM_yeDo1Ib3cWGWNRvugWsXeHGxuUS_F',

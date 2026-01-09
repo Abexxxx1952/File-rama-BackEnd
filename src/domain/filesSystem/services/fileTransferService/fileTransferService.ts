@@ -5,16 +5,20 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Cron } from '@nestjs/schedule';
 import { UUID } from 'crypto';
+import { randomUUID } from 'crypto';
 import { EventEmitter } from 'events';
 import { FastifyReply, FastifyRequest } from 'fastify';
+import { createWriteStream, promises as fs } from 'fs';
 import { GaxiosResponse } from 'gaxios';
 import { drive_v3 } from 'googleapis';
+import { join } from 'path';
 import { Observable } from 'rxjs';
-import { pipeline } from 'stream';
-import { promisify } from 'util';
+import { pipeline } from 'stream/promises';
 import {
   FILES_REPOSITORY,
   STATS_REPOSITORY,
@@ -30,12 +34,14 @@ import { FileUploadEvent, UploadStatus } from '../../types/file-upload-event';
 import { FileUploadResult } from '../../types/file-upload-result';
 import { NameConflictChoice } from '../../types/upload-name-conflict';
 import { GoogleDriveClient } from '../googleDriveClient/googleDriveClient';
+import { StaticFilesService } from '../staticFilesService/staticFilesService';
 
 @Injectable()
-export class FileTransferService {
+export class FileTransferService implements OnModuleInit {
   private readonly uploadEmitters = new Map<string, EventEmitter>();
   private activeUploads = new Map<string, number>();
-  private readonly maxUploadsPerUser: number;
+  private readonly MAX_UPLOADS_PER_USER: number;
+  private currentStaticFilesSize = 0;
   constructor(
     private readonly configService: ConfigService,
     @Inject(USERS_REPOSITORY)
@@ -45,18 +51,38 @@ export class FileTransferService {
     @Inject(STATS_REPOSITORY)
     private readonly statsRepository: StatsRepository,
     private readonly googleDriveClient: GoogleDriveClient,
+    private readonly staticFilesService: StaticFilesService,
   ) {
-    this.maxUploadsPerUser = this.configService.getOrThrow<number>(
+    this.MAX_UPLOADS_PER_USER = this.configService.getOrThrow<number>(
       'MAX_UPLOADS_PER_USER',
     );
   }
+
+  async onModuleInit() {
+    setTimeout(
+      async () => {
+        await this.staticFilesService.runInitialCleanup();
+
+        this.currentStaticFilesSize =
+          await this.filesRepository.getTotalStaticFilesSize();
+      },
+      2 * 60 * 1000, // 2 minutes
+    );
+  }
+
+  @Cron('0 3 * * *') // every day at 3am
+  async dailyCleanup() {
+    await this.staticFilesService.dailyCleanup();
+
+    this.currentStaticFilesSize =
+      await this.filesRepository.getTotalStaticFilesSize();
+  }
+
   async createFile(
     currentUserId: UUID,
     fileUploadId: string = '',
     request: FastifyRequest,
   ): Promise<FileUploadResult[]> {
-    const pipelineAsync = promisify(pipeline);
-
     let driveService: drive_v3.Drive;
     let description: string | null = null;
     let conflictChoice: NameConflictChoice = NameConflictChoice.RENAME;
@@ -204,7 +230,7 @@ export class FileTransferService {
               });
             });
 
-            await pipelineAsync(part.file, async (stream) => {
+            await pipeline(part.file, async (stream) => {
               const response = await driveService.files.create({
                 requestBody: {
                   name: fileName,
@@ -229,7 +255,7 @@ export class FileTransferService {
                 fileDownloadUrl: response.data.webContentLink,
                 fileName,
                 fileExtension: response.data.fileExtension,
-                fileSize: response.data.size,
+                fileSize: Number(response.data.size),
                 fileDescription: description,
                 parentFolderId,
                 fileGoogleDriveId: response.data.id,
@@ -302,7 +328,7 @@ export class FileTransferService {
 
       const meta = await driveService.files.get({
         fileId: file.fileGoogleDriveId,
-        fields: 'name, mimeType',
+        fields: 'name, mimeType, size',
       });
 
       if (!meta.data.name) {
@@ -310,6 +336,7 @@ export class FileTransferService {
       }
 
       const fileName = meta.data.name;
+      const size = meta.data.size || '0';
       const mimeType = meta.data.mimeType || 'application/octet-stream';
 
       const fileStream = await driveService.files.get(
@@ -325,10 +352,7 @@ export class FileTransferService {
         'Content-Disposition',
         `attachment; filename="${encodeURIComponent(fileName)}"`,
       );
-      const contentLength = fileStream.headers['content-length'];
-      if (contentLength) {
-        res.header('Content-Length', contentLength);
-      }
+      res.header('Content-Length', size);
       res.header('Access-Control-Expose-Headers', 'Content-Disposition');
 
       return res.send(fileStream.data);
@@ -344,8 +368,36 @@ export class FileTransferService {
       throw new NotFoundException('File not found');
     }
 
-    const user = await this.usersRepository.findById(file.userId);
+    const PUBLIC_STATIC_SERVER_URL = this.configService.getOrThrow<
+      string | null
+    >('PUBLIC_STATIC_SERVER_URL');
 
+    if (file.fileStaticUrl) {
+      const url = new URL(file.fileStaticUrl);
+      const fileName = url.pathname.split('/').pop();
+
+      if (PUBLIC_STATIC_SERVER_URL) {
+        return res.redirect(`${PUBLIC_STATIC_SERVER_URL}/${fileName}`);
+      }
+
+      res
+        .header('Access-Control-Allow-Origin', '*')
+        .header('Cross-Origin-Resource-Policy', 'cross-origin')
+        .header('Cross-Origin-Opener-Policy', 'cross-origin')
+        .header('Cache-Control', 'public, max-age=300')
+        .header('Accept-Ranges', 'bytes');
+
+      return res.sendFile(fileName);
+    }
+
+    const STATIC_DIR = this.configService.getOrThrow<string>(
+      'STATIC_FILES_PUBLIC_DIR',
+    );
+    const MAX_BYTES = this.configService.getOrThrow<number>(
+      'STATIC_FILES_MAX_BYTES',
+    );
+
+    const user = await this.usersRepository.findById(file.userId);
     const drive = await this.googleDriveClient.getDrive(
       user,
       file.fileGoogleDriveClientEmail,
@@ -356,10 +408,21 @@ export class FileTransferService {
       fields: 'name, mimeType, size',
     });
 
-    const fileName = meta.data.name!;
-    const mimeType = meta.data.mimeType || 'application/octet-stream';
+    const fileSize = Number(meta.data.size ?? 0);
 
-    const stream = await drive.files.get(
+    if (this.currentStaticFilesSize + fileSize > MAX_BYTES) {
+      return this.streamFromDrive(file, res);
+    }
+
+    await fs.mkdir(join(process.cwd(), STATIC_DIR), {
+      recursive: true,
+    });
+
+    const extension = meta.data.name?.split('.').pop();
+    const staticName = `${file.id}-${randomUUID()}.${extension}`;
+    const staticPath = join(process.cwd(), STATIC_DIR, staticName);
+
+    const driveStream = await drive.files.get(
       {
         fileId: file.fileGoogleDriveId,
         supportsAllDrives: true,
@@ -368,18 +431,34 @@ export class FileTransferService {
       { responseType: 'stream' },
     );
 
+    await pipeline(driveStream.data, createWriteStream(staticPath));
+
+    const DOMAIN = this.configService.getOrThrow<string>('SERVER_DOMAIN_URL');
+    const PORT = this.configService.getOrThrow<number>('PORT');
+
+    const STATIC_FILES_PUBLIC_DIR = this.configService.getOrThrow<string>(
+      'STATIC_FILES_PUBLIC_DIR',
+    );
+
+    const staticUrl = `${DOMAIN}:${PORT}${STATIC_FILES_PUBLIC_DIR}/${staticName}`;
+
+    this.filesRepository.updateById(file.id, {
+      fileStaticUrl: staticUrl,
+      fileStaticCreatedAt: new Date(),
+    });
+
+    if (PUBLIC_STATIC_SERVER_URL) {
+      return res.redirect(`${PUBLIC_STATIC_SERVER_URL}/${staticName}`);
+    }
+
     res
-      .header('Content-Type', mimeType)
-      .header(
-        'Content-Disposition',
-        `inline; filename*=UTF-8''${encodeURIComponent(fileName)}`,
-      )
       .header('Access-Control-Allow-Origin', '*')
       .header('Cross-Origin-Resource-Policy', 'cross-origin')
-      .header('Cache-Control', 'public, max-age=31536000, immutable')
+      .header('Cross-Origin-Opener-Policy', 'cross-origin')
+      .header('Cache-Control', 'public, max-age=300')
       .header('Accept-Ranges', 'bytes');
 
-    return res.send(stream.data);
+    return res.sendFile(staticName);
   }
 
   uploadProgress(
@@ -437,7 +516,7 @@ export class FileTransferService {
   private startUpload(userId: string): boolean {
     const current = this.activeUploads.get(userId) || 0;
 
-    if (current >= this.maxUploadsPerUser) {
+    if (current >= this.MAX_UPLOADS_PER_USER) {
       return false;
     }
 
@@ -520,5 +599,43 @@ export class FileTransferService {
         cause: error,
       });
     }
+  }
+
+  private async streamFromDrive(file: File, res: FastifyReply) {
+    const user = await this.usersRepository.findById(file.userId);
+    const drive = await this.googleDriveClient.getDrive(
+      user,
+      file.fileGoogleDriveClientEmail,
+    );
+
+    const meta = await drive.files.get({
+      fileId: file.fileGoogleDriveId,
+      fields: 'name, mimeType',
+    });
+
+    const fileName = meta.data.name!;
+    const mimeType = meta.data.mimeType || 'application/octet-stream';
+
+    const stream = await drive.files.get(
+      {
+        fileId: file.fileGoogleDriveId,
+        supportsAllDrives: true,
+        alt: 'media',
+      },
+      { responseType: 'stream' },
+    );
+
+    res
+      .header('Content-Type', mimeType)
+      .header(
+        'Content-Disposition',
+        `inline; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+      )
+      .header('Access-Control-Allow-Origin', '*')
+      .header('Cross-Origin-Resource-Policy', 'cross-origin')
+      .header('Cache-Control', 'public, max-age=300')
+      .header('Accept-Ranges', 'bytes');
+
+    return res.send(stream.data);
   }
 }

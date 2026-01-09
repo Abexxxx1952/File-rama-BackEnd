@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { UUID } from 'crypto';
+import { isNotNull, lt, sql } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { DATABASE_CONNECTION } from '@/configs/providersTokens';
 import { BaseAbstractRepository } from '@/database/abstractRepository/base.abstract.repository';
@@ -54,5 +55,25 @@ export class FilesRepository extends BaseAbstractRepository<
     } catch (error) {
       throw error;
     }
+  }
+
+  async findExpiredFiles(threshold: Date): Promise<File[]> {
+    return this.database
+      .select()
+      .from(this.table)
+      .where(lt(this.table.fileStaticCreatedAt, threshold))
+      .$dynamic();
+  }
+
+  async getTotalStaticFilesSize(): Promise<number> {
+    const result = await this.database
+      .select({
+        totalSize: sql<number>`COALESCE(SUM(${this.table.fileSize}), 0)`,
+      })
+      .from(this.table)
+      .where(isNotNull(this.table.fileStaticUrl))
+      .execute();
+
+    return Number(result[0]?.totalSize ?? 0);
   }
 }

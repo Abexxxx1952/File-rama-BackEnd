@@ -3,6 +3,7 @@ import {
   IsEnum,
   IsNotEmpty,
   IsNumber,
+  IsOptional,
   IsString,
   validateSync,
 } from 'class-validator';
@@ -90,7 +91,7 @@ class EnvironmentVariables {
 
   @IsString()
   @IsNotEmpty()
-  PASSWORD_PEPPER: string;
+  CLIENT_AUTH_PROVIDER_REDIRECT_URL: string;
 
   @IsString()
   @IsNotEmpty()
@@ -137,14 +138,33 @@ class EnvironmentVariables {
   @IsNotEmpty()
   MAIL_HOST: string;
 
-  @IsString()
+  @IsNumber()
   @IsNotEmpty()
-  MAIL_PORT: string;
+  @Transform(({ value }) => parseInt(value))
+  MAIL_PORT: number;
 
   @IsNumber()
   @IsNotEmpty()
   @Transform(({ value }) => parseInt(value))
   MAX_UPLOADS_PER_USER: number;
+
+  @IsNumber()
+  @IsNotEmpty()
+  @Transform(({ value }) => parseInt(value))
+  STATIC_FILES_TTL_HOURS: number;
+
+  @IsNumber()
+  @IsNotEmpty()
+  @Transform(({ value }) => parseInt(value))
+  STATIC_FILES_MAX_BYTES: number;
+
+  @IsString()
+  @IsNotEmpty()
+  STATIC_FILES_PUBLIC_DIR: string;
+
+  @IsString()
+  @IsOptional()
+  PUBLIC_STATIC_SERVER_URL?: string | null;
 }
 
 export function validate(config: Record<string, unknown>) {

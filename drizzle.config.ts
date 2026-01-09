@@ -5,10 +5,10 @@ import { defineConfig } from 'drizzle-kit';
 config();
 
 const configService = new ConfigService();
-const DATABASE_USER = configService.getOrThrow('DATABASE_USER');
-const DATABASE_PASSWORD = configService.getOrThrow('DATABASE_PASSWORD');
-const DATABASE_HOST = configService.getOrThrow('DATABASE_HOST');
-const DATABASE_NAME = configService.getOrThrow('DATABASE_NAME');
+const DATABASE_USER = configService.getOrThrow<string>('DATABASE_USER');
+const DATABASE_PASSWORD = configService.getOrThrow<string>('DATABASE_PASSWORD');
+const DATABASE_HOST = configService.getOrThrow<string>('DATABASE_HOST');
+const DATABASE_NAME = configService.getOrThrow<string>('DATABASE_NAME');
 const url = `postgresql://${DATABASE_USER}:${DATABASE_PASSWORD}@${DATABASE_HOST}/${DATABASE_NAME}?sslmode=require`;
 
 export default defineConfig({

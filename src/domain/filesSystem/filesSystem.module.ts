@@ -16,6 +16,7 @@ import { FileTransferService } from './services/fileTransferService/fileTransfer
 import { FolderCommandService } from './services/folderCommandService/folderCommandService';
 import { GoogleDriveClient } from './services/googleDriveClient/googleDriveClient';
 import { PermissionsService } from './services/permissionsService/permissionsService';
+import { StaticFilesService } from './services/staticFilesService/staticFilesService';
 
 @Module({
   imports: [DatabaseModule, ConfigModule, UsersModule, JwtModule, StatsModule],
@@ -26,6 +27,7 @@ import { PermissionsService } from './services/permissionsService/permissionsSer
     FileTransferService,
     FolderCommandService,
     PermissionsService,
+    StaticFilesService,
     {
       provide: FILES_REPOSITORY,
       useClass: FilesRepository,

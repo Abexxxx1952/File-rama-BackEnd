@@ -12,7 +12,9 @@ import { loadDatabaseSchema } from './schema-loader';
       provide: DATABASE_CONNECTION,
       useFactory: async (configService: ConfigService) => {
         const pool = new Pool({
-          connectionString: configService.getOrThrow('DB_CONNECTION_STRING'),
+          connectionString: configService.getOrThrow<string>(
+            'DB_CONNECTION_STRING',
+          ),
         });
 
         const databaseSchema = await loadDatabaseSchema();

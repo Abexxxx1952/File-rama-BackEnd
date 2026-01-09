@@ -78,6 +78,20 @@
       "when": 1744234457419,
       "tag": "20250409213417_slow_gunslinger",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1767734570405,
+      "tag": "20260106212250_cute_satana",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1767939876413,
+      "tag": "20260109062436_fast_silhouette",
+      "breakpoints": true
     }
   ]
 }

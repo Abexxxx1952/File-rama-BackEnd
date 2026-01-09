@@ -42,7 +42,7 @@ export class FindFilesByConditionsDto {
   @IsOptional()
   @IsString()
   @IsNotEmpty()
-  readonly fileSize?: string;
+  readonly fileSize?: number;
 
   @IsOptional()
   @IsUUID()

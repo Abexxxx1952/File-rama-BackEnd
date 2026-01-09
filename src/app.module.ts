@@ -2,12 +2,16 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { LoggerHelperInterceptor } from './common/interceptors/loggerHelper.interceptor';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
+import { getCacheConfig } from './configs/cache.config';
 import { validate } from './configs/env.validate';
+import { getThrottlerConfig } from './configs/throttler.config';
 import { DatabaseModule } from './database/database.module';
 import { DomainModule } from './domain/domain.module';
+import { LoggerModule } from './logger/logger.module';
 
 @Module({
   imports: [
@@ -15,37 +19,21 @@ import { DomainModule } from './domain/domain.module';
       expandVariables: true,
       validate,
     }),
+    LoggerModule,
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => {
-        const mode = configService.getOrThrow('MODE');
-        const ttl = configService.getOrThrow('THROTTLER_TTL');
-        const limit = configService.getOrThrow('THROTTLER_LIMIT');
-        const skipIf = mode === 'production' ? () => false : () => true;
-        return [
-          {
-            ttl,
-            limit,
-            skipIf,
-          },
-        ];
-      },
-
+      useFactory: (configService: ConfigService) =>
+        getThrottlerConfig(configService),
       inject: [ConfigService],
     }),
     CacheModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => {
-        const ttlProd = configService.getOrThrow('CACHE_TTL');
-        const mode = configService.getOrThrow('MODE');
-        const ttl = mode === 'production' ? ttlProd : 0;
-        return {
-          ttl,
-        };
-      },
+      useFactory: (configService: ConfigService) =>
+        getCacheConfig(configService),
       isGlobal: true,
       inject: [ConfigService],
     }),
+    ScheduleModule.forRoot(),
     DatabaseModule,
     DomainModule,
   ],

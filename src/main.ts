@@ -1,6 +1,8 @@
 import fastifyCookie from '@fastify/cookie';
 import fastifyHelmet from '@fastify/helmet';
 import fastifyMultipart from '@fastify/multipart';
+import fastifyStatic from '@fastify/static';
+// added sendFile to FastifyReply
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
@@ -10,6 +12,7 @@ import {
 } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
 import { getCorsOptions } from './configs/cors.config';
+import { getFastifyStatic } from './configs/fastifyStatic.config';
 import { getHelmetOptions } from './configs/helmet.config';
 import { createSwagger } from './swagger/swagger';
 
@@ -42,7 +45,9 @@ async function bootstrap() {
 
   createSwagger(app);
 
-  const PORT = process.env.PORT || 4000;
+  app.register(fastifyStatic, getFastifyStatic(configService));
+
+  const PORT = configService.getOrThrow<number>('PORT') || 4000;
 
   try {
     await app.listen(PORT, () => {

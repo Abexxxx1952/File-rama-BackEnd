@@ -1,12 +1,14 @@
 import { Exclude } from 'class-transformer';
-import { UUID } from 'crypto';
 import { InferSelectModel } from 'drizzle-orm';
 import { MakeOptional } from '@/database/types/make-optional';
 import { filesSchema } from '../schema/files.schema';
 
 type FileInferSelect = InferSelectModel<typeof filesSchema>;
 
-type FileWithOptionalFields = MakeOptional<FileInferSelect, 'fileDescription'>;
+type FileWithOptionalFields = MakeOptional<
+  FileInferSelect,
+  'fileDescription' | 'fileStaticUrl' | 'fileStaticCreatedAt'
+>;
 
 export class File implements FileWithOptionalFields {
   id: string;
@@ -15,7 +17,7 @@ export class File implements FileWithOptionalFields {
   fileDownloadUrl: string;
   fileName: string;
   fileExtension: string;
-  fileSize: string;
+  fileSize: number;
   parentFolderId: string;
   fileGoogleDriveId: string;
   fileGoogleDriveParentFolderId: string;
@@ -24,4 +26,6 @@ export class File implements FileWithOptionalFields {
   @Exclude()
   isPublic: boolean;
   fileDescription?: string;
+  fileStaticUrl?: string;
+  fileStaticCreatedAt?: Date;
 }

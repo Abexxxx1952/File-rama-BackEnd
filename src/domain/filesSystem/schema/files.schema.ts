@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm';
 import {
+  bigint,
   boolean,
   index,
   pgTable,
@@ -22,7 +23,9 @@ export const filesSchema = pgTable(
     fileDownloadUrl: text('file_download_url').notNull(),
     fileName: text('file_name').notNull(),
     fileExtension: text('file_extension').notNull(),
-    fileSize: text('file_size').notNull(),
+    fileSize: bigint('file_size', { mode: 'number' }).notNull(),
+    fileStaticUrl: text('file_static_url'),
+    fileStaticCreatedAt: timestamp('file_static_created_at'),
     parentFolderId: uuid('parent_folder_id').references(() => foldersSchema.id),
     fileGoogleDriveId: text('file_google_drive_id').notNull(),
     fileGoogleDriveParentFolderId: text(

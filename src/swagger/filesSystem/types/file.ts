@@ -28,7 +28,7 @@ export class FileModel implements File {
   fileExtension: string;
 
   @ApiProperty({ description: 'Size of the file in bytes' })
-  fileSize: string;
+  fileSize: number;
 
   @ApiProperty({
     description: 'Parent folder ID, if applicable',

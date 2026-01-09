@@ -22,7 +22,7 @@ export class FindFileByConditionsArgs implements FindFilesByConditionsDto {
   readonly fileExtension?: string;
 
   @ApiPropertyOptional()
-  readonly fileSize?: string;
+  readonly fileSize?: number;
 
   @ApiPropertyOptional({ type: 'string', format: 'UUID' })
   readonly parentFolderId?: UUID;
