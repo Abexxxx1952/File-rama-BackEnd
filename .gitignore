@@ -40,6 +40,9 @@ lerna-debug.log*
 .env.production.local
 .env.local
 
+# static files
+/static
+
 # temp directory
 .temp
 .tmp

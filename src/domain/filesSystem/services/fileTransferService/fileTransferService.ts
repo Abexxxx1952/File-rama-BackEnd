@@ -368,9 +368,9 @@ export class FileTransferService implements OnModuleInit {
       throw new NotFoundException('File not found');
     }
 
-    const PUBLIC_STATIC_SERVER_URL = this.configService.getOrThrow<
-      string | null
-    >('PUBLIC_STATIC_SERVER_URL');
+    const PUBLIC_STATIC_SERVER_URL = this.configService.get<string | undefined>(
+      'PUBLIC_STATIC_SERVER_URL',
+    );
 
     if (file.fileStaticUrl) {
       const url = new URL(file.fileStaticUrl);

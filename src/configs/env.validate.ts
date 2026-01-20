@@ -164,7 +164,7 @@ class EnvironmentVariables {
 
   @IsString()
   @IsOptional()
-  PUBLIC_STATIC_SERVER_URL?: string | null;
+  PUBLIC_STATIC_SERVER_URL?: string | undefined;
 }
 
 export function validate(config: Record<string, unknown>) {

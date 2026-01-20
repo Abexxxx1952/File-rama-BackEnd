@@ -16,15 +16,23 @@ export class StaticFilesService {
   ) {}
 
   async runInitialCleanup() {
-    this.logger.info('Running initial static files cleanup');
+    this.logger.info('Running initial static files cleanup', {
+      StaticFilesService: 'runInitialCleanup',
+    });
     const expiredFilesTotalSize = await this.cleanupStaticFiles();
-    this.logger.info(`Deleted ${expiredFilesTotalSize} bytes`);
+    this.logger.info(`Deleted ${expiredFilesTotalSize} bytes`, {
+      StaticFilesService: 'runInitialCleanup',
+    });
   }
 
   async dailyCleanup() {
-    this.logger.info('Running daily static files cleanup');
+    this.logger.info('Running daily static files cleanup', {
+      StaticFilesService: 'dailyCleanup',
+    });
     const expiredFilesTotalSize = await this.cleanupStaticFiles();
-    this.logger.info(`Deleted ${expiredFilesTotalSize} bytes`);
+    this.logger.info(`Deleted ${expiredFilesTotalSize} bytes`, {
+      StaticFilesService: 'dailyCleanup',
+    });
   }
 
   private async cleanupStaticFiles(): Promise<number> {
