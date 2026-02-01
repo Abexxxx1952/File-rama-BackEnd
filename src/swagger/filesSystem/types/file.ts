@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { UUID } from 'crypto';
+import { publicAccessRole } from '@/domain/filesSystem/dto/create-file-permissions';
 import { File } from '@/domain/filesSystem/types/file';
 
 export class FileModel implements File {
@@ -53,8 +54,11 @@ export class FileModel implements File {
   })
   uploadDate: Date;
 
-  @ApiProperty({ description: 'Indicates if the file is publicly accessible' })
-  isPublic: boolean;
+  @ApiProperty({
+    description:
+      'Indicates if the file is publicly accessible (no access, read or write)',
+  })
+  publicAccessRole: publicAccessRole;
 
   @ApiPropertyOptional({
     description: 'Optional description of the file',

@@ -78,11 +78,10 @@ export class FilesSystemService {
     createfolderDto: CreateFolderDto,
   ): Promise<Folder> {
     try {
-      const folderName =
-        await this.folderCommandService.handleFolderNameConflict(
-          createfolderDto.parentFolderId,
-          createfolderDto.folderName,
-        );
+      const folderName = await this.foldersRepository.handleFolderNameConflict(
+        createfolderDto.parentFolderId,
+        createfolderDto.folderName,
+      );
 
       const folder = await this.foldersRepository.create({
         folderName,
@@ -165,8 +164,6 @@ export class FilesSystemService {
     currentUserId: UUID,
     fileUpdateDto: UpdateFileDto,
   ): Promise<File> {
-    let driveService: drive_v3.Drive;
-    const requestBody: drive_v3.Schema$File = {};
     try {
       const [user, userFiles] = await Promise.all([
         this.usersRepository.findById(currentUserId),
@@ -179,32 +176,47 @@ export class FilesSystemService {
         throw new NotFoundException("File doesn't exist");
       }
 
-      driveService = await this.googleDriveClient.getDrive(
+      const driveService = await this.googleDriveClient.getDrive(
         user,
         file.fileGoogleDriveClientEmail,
       );
 
-      if (fileUpdateDto.fileName) {
-        requestBody.name = fileUpdateDto.fileName;
+      const requestBody: drive_v3.Schema$File = {};
+      const dtoCopy: UpdateFileDto & { fileExtension?: string | null } = {
+        ...fileUpdateDto,
+      };
+
+      const nameResult = await this.filesRepository.resolveFileName(
+        fileUpdateDto,
+        file.fileName,
+        file.parentFolderId,
+      );
+
+      if (nameResult) {
+        requestBody.name = nameResult;
+        dtoCopy.fileName = nameResult;
+        const extensionResult = this.filesRepository.getExtension(nameResult);
+        if (extensionResult !== file.fileExtension) {
+          dtoCopy.fileExtension = extensionResult;
+        }
       }
 
       if (fileUpdateDto.fileDescription) {
         requestBody.description = fileUpdateDto.fileDescription;
       }
 
-      const response = await driveService.files.update({
-        fileId: file.fileGoogleDriveId,
-        requestBody,
-      });
+      if (Object.keys(requestBody).length > 0) {
+        const response = await driveService.files.update({
+          fileId: file.fileGoogleDriveId,
+          requestBody,
+        });
 
-      if (response.status === 204 || response.status === 200) {
-        const updatedFile = await this.filesRepository.updateFile(
-          currentUserId,
-          fileUpdateDto,
-        );
-
-        return updatedFile;
+        if (![200, 204].includes(response.status)) {
+          throw new Error('Drive update failed');
+        }
       }
+
+      return this.filesRepository.updateFile(currentUserId, dtoCopy);
     } catch (error) {
       if (error?.errors[0]?.message) {
         this.mapGoogleError(error);
@@ -247,21 +259,17 @@ export class FilesSystemService {
             return file.id === fileSystemItemToUpdate.fileId;
           });
           if (existFile) {
+            const fileObjToMap = {
+              ...fileSystemItemToUpdate,
+              fileGoogleDriveClientEmail: existFile.fileGoogleDriveClientEmail,
+              fileGoogleDriveId: existFile.fileGoogleDriveId,
+            };
+
             const mapValue = files.get(existFile.fileGoogleDriveClientEmail)
-              ? files.get(existFile.fileGoogleDriveClientEmail).concat({
-                  ...fileSystemItemToUpdate,
-                  fileGoogleDriveClientEmail:
-                    existFile.fileGoogleDriveClientEmail,
-                  fileGoogleDriveId: existFile.fileGoogleDriveId,
-                })
-              : [
-                  {
-                    ...fileSystemItemToUpdate,
-                    fileGoogleDriveClientEmail:
-                      existFile.fileGoogleDriveClientEmail,
-                    fileGoogleDriveId: existFile.fileGoogleDriveId,
-                  },
-                ];
+              ? files
+                  .get(existFile.fileGoogleDriveClientEmail)
+                  .concat(fileObjToMap)
+              : [fileObjToMap];
             files.set(existFile.fileGoogleDriveClientEmail, mapValue);
 
             coincidence = true;
@@ -293,35 +301,73 @@ export class FilesSystemService {
       });
 
       if (files.size > 0) {
-        for (const [key, value] of files) {
+        for (const [clientEmail, filesToUpdate] of files) {
           let executeUpdateFiles: Promise<void>[];
 
-          driveService = await this.googleDriveClient.getDrive(user, key);
+          driveService = await this.googleDriveClient.getDrive(
+            user,
+            clientEmail,
+          );
 
-          executeUpdateFiles = value.map(async (fileToUpdate) => {
+          executeUpdateFiles = filesToUpdate.map(async (fileToUpdate) => {
             try {
               const requestBody: drive_v3.Schema$File = {};
 
-              if (fileToUpdate.fileName) {
-                requestBody.name = fileToUpdate.fileName;
+              const fileToUpdateCopy: UpdateFileDto & {
+                fileExtension?: string | null;
+                fileGoogleDriveClientEmail: string;
+                fileGoogleDriveId: string;
+              } = { ...fileToUpdate };
+
+              const file = await this.filesRepository.findById(
+                fileToUpdate.fileId,
+              );
+
+              const nameResult = await this.filesRepository.resolveFileName(
+                fileToUpdate,
+                file.fileName,
+                file.parentFolderId,
+              );
+
+              if (nameResult) {
+                requestBody.name = nameResult;
+                fileToUpdateCopy.fileName = nameResult;
+                const extensionResult =
+                  this.filesRepository.getExtension(nameResult);
+                if (extensionResult !== file.fileExtension) {
+                  fileToUpdateCopy.fileExtension = extensionResult;
+                }
               }
 
-              if (fileToUpdate.fileDescription) {
-                requestBody.description = fileToUpdate.fileDescription;
+              if (fileToUpdateCopy.fileDescription) {
+                requestBody.description = fileToUpdateCopy.fileDescription;
               }
 
-              const response = await driveService.files.update({
-                fileId: fileToUpdate.fileGoogleDriveId,
-                requestBody,
-              });
+              const shouldUpdateDrive = Object.keys(requestBody).length > 0;
 
-              if (response.status === 204 || response.status === 200) {
+              if (shouldUpdateDrive) {
+                const response = await driveService.files.update({
+                  fileId: file.fileGoogleDriveId,
+                  requestBody,
+                });
+
+                if (![200, 204].includes(response.status)) {
+                  throw new Error('Drive update failed');
+                }
+              }
+
+              if (
+                shouldUpdateDrive ||
+                fileToUpdate.parentFolderId ||
+                fileToUpdate.parentFolderId === null
+              ) {
                 const {
                   fileGoogleDriveClientEmail,
                   fileGoogleDriveId,
                   fileId,
                   ...rest
-                } = fileToUpdate;
+                } = fileToUpdateCopy;
+
                 filesToUpdateFromDB.push({
                   id: fileToUpdate.fileId,
                   data: rest,
@@ -338,26 +384,64 @@ export class FilesSystemService {
         }
       }
 
-      const updatesFiles =
-        await this.filesRepository.updateManyById(filesToUpdateFromDB);
-      updatesFiles.forEach((updatesFile) => {
-        result.push({
-          fileId: updatesFile.id,
-          status: 'success',
+      try {
+        const updatesFiles =
+          await this.filesRepository.updateManyById(filesToUpdateFromDB);
+
+        updatesFiles.forEach((updatesFile) => {
+          result.push({
+            fileId: updatesFile.id,
+            status: 'success',
+          });
         });
-      });
+      } catch (error) {
+        if (error?.errors[0]?.message) {
+          this.mapGoogleError(error);
+        }
+        throw error;
+      }
 
       if (folders.length > 0) {
         const foldersToUpdateFromDB: {
           id: string | number | UUID;
           data: Partial<Folder>;
-        }[] = folders.map((folderToUpdate) => {
+        }[] = [];
+
+        for (const folderToUpdate of folders) {
           const { folderId, ...rest } = folderToUpdate;
-          return {
+          let folderName: string | null = null;
+
+          const folder = await this.foldersRepository.findById(folderId);
+
+          if (
+            folderToUpdate.parentFolderId ||
+            folderToUpdate.parentFolderId === null
+          ) {
+            folderName = await this.foldersRepository.handleFolderNameConflict(
+              folderToUpdate.parentFolderId,
+              folderToUpdate.folderName
+                ? folderToUpdate.folderName
+                : folder.folderName,
+            );
+            if (folderName !== folder.folderName) {
+              rest.folderName = folderName;
+            }
+          }
+
+          if (folderToUpdate.folderName && !folderName) {
+            folderName = await this.foldersRepository.handleFolderNameConflict(
+              folder.parentFolderId,
+              folderToUpdate.folderName,
+            );
+            if (folderName !== folder.folderName) {
+              rest.folderName = folderName;
+            }
+          }
+          foldersToUpdateFromDB.push({
             id: folderId,
             data: rest,
-          };
-        });
+          });
+        }
         const updatedFolder = await this.foldersRepository.updateManyById(
           foldersToUpdateFromDB,
         );

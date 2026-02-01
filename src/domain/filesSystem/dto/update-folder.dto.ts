@@ -4,7 +4,7 @@ import { UUID } from 'crypto';
 export class UpdateFolderDto {
   @IsUUID()
   @IsNotEmpty()
-  readonly folderId: UUID;
+  readonly folderId: UUID | null;
 
   @IsOptional()
   @IsString()

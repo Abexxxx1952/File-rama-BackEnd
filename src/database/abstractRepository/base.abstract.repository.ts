@@ -12,11 +12,15 @@ import {
   eq,
   inArray,
   InferInsertModel,
+  isNotNull,
   isNull,
 } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { PgTable, TableConfig } from 'drizzle-orm/pg-core';
+import { NameConflictChoice } from '@/domain/filesSystem/types/upload-name-conflict';
+import { handleNameConflictParams } from '../types/handleNameConflictParams';
 import { RelatedTables, TableWithId } from '../types/types';
+import { WhereCondition } from '../types/where-condition';
 import { BaseInterfaceRepository } from './base.interface.repository';
 
 export abstract class BaseAbstractRepository<
@@ -32,7 +36,6 @@ export abstract class BaseAbstractRepository<
   ) {
     this.relatedTables = {};
   }
-
   /**
    * Create a new entity.
    * @param data - Data to create the entity.
@@ -277,18 +280,32 @@ export abstract class BaseAbstractRepository<
    * @returns An array of entities.
    */
   public async findAllByCondition(
-    condition: Partial<T>,
+    condition: WhereCondition<T>,
     offset?: number,
     limit?: number,
   ): Promise<T[]> {
     try {
       const conditions = Object.entries(condition).map(([key, value]) => {
         const column = this.table[key as keyof Schema];
-        if (column instanceof Column) {
-          return value === null ? isNull(column) : eq(column, value);
-        } else {
+
+        if (!(column instanceof Column)) {
           throw new BadRequestException(`Invalid key ${key} in condition`);
         }
+
+        if (value === null) {
+          return isNull(column);
+        }
+
+        if (
+          typeof value === 'object' &&
+          value !== null &&
+          'notNull' in value &&
+          value.notNull === true
+        ) {
+          return isNotNull(column);
+        }
+
+        return eq(column, value);
       });
 
       let query = this.database
@@ -648,6 +665,67 @@ export abstract class BaseAbstractRepository<
     return validatedObject;
   }
 
+  public async handleNameConflict<T extends { id: string }>(
+    params: handleNameConflictParams<T, Schema>,
+  ): Promise<string> {
+    const {
+      parentId,
+      parentField,
+      initialName,
+      nameField,
+      repository,
+      userChoice = NameConflictChoice.RENAME,
+    } = params;
+    let uniqueName = initialName;
+    let innerEntity: T | null = null;
+
+    try {
+      try {
+        const condition = {
+          [parentField]: parentId,
+          [nameField]: uniqueName,
+        } as Partial<T>;
+
+        innerEntity = await repository.findOneByCondition(condition);
+      } catch (error) {
+        if (!(error instanceof NotFoundException)) {
+          throw new InternalServerErrorException(error, { cause: error });
+        }
+      }
+
+      if (!innerEntity) {
+        return uniqueName;
+      }
+
+      if (userChoice === NameConflictChoice.OVERWRITE) {
+        await repository.deleteById(innerEntity.id);
+        return uniqueName;
+      }
+
+      while (true) {
+        uniqueName = this.incrementName(uniqueName);
+
+        try {
+          const condition = {
+            [parentField]: parentId,
+            [nameField]: uniqueName,
+          } as Partial<T>;
+
+          await repository.findOneByCondition(condition);
+        } catch (error) {
+          if (error instanceof NotFoundException) {
+            return uniqueName;
+          }
+          throw new InternalServerErrorException(error, { cause: error });
+        }
+      }
+    } catch (error) {
+      throw new Error(`Failed to handle file conflict: ${error.message}`, {
+        cause: error,
+      });
+    }
+  }
+
   private aggregateResults(results: any[]): Record<string, any[]> {
     const aggregated: Record<string, any[]> = {};
     const uniqueIds: Record<string, Set<string>> = {};
@@ -671,5 +749,25 @@ export abstract class BaseAbstractRepository<
     });
 
     return aggregated;
+  }
+
+  private incrementName(name: string): string {
+    const lastDot = name.lastIndexOf('.');
+
+    const hasExtension = lastDot > 0 && lastDot < name.length - 1;
+
+    const baseWithCounter = hasExtension ? name.slice(0, lastDot) : name;
+
+    const ext = hasExtension ? name.slice(lastDot) : '';
+
+    const match = baseWithCounter.match(/\s\((\d+)\)$/);
+
+    if (match) {
+      const counter = Number(match[1]) + 1;
+      const base = baseWithCounter.replace(/\s\(\d+\)$/, '');
+      return `${base} (${counter})${ext}`;
+    }
+
+    return `${baseWithCounter} (1)${ext}`;
   }
 }

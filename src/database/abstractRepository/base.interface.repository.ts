@@ -1,4 +1,4 @@
-import { InferInsertModel } from 'drizzle-orm';
+import { UUID } from 'crypto';
 import { PgTable, TableConfig } from 'drizzle-orm/pg-core';
 
 export interface BaseInterfaceRepository<
@@ -75,4 +75,11 @@ export interface BaseInterfaceRepository<
    * @returns An array of deleted entities.
    */
   deleteByCondition(condition: Partial<T>): Promise<T[]>;
+
+  /**
+   * Delete multiple entities by their IDs.
+   * @param ids - Array of IDs of the entities to delete.
+   * @returns Array of deleted entities.
+   */
+  deleteManyById(ids: (string | number | UUID)[]): Promise<T[]>;
 }

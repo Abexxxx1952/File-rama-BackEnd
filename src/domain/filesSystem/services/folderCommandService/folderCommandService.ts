@@ -29,69 +29,6 @@ export class FolderCommandService {
     private readonly filesRepository: FilesRepository,
     private readonly googleDriveClient: GoogleDriveClient,
   ) {}
-  async handleFolderNameConflict(
-    parentFolderId: string | null,
-    name: string,
-    userChoice: NameConflictChoice = NameConflictChoice.RENAME,
-  ): Promise<string> {
-    let innerEntity: Folder;
-    let uniqueName = name;
-    try {
-      try {
-        innerEntity = await this.foldersRepository.findOneByCondition({
-          parentFolderId,
-          folderName: uniqueName,
-        });
-      } catch (error) {
-        if (!(error instanceof NotFoundException)) {
-          throw new InternalServerErrorException(error);
-        }
-      }
-
-      if (innerEntity) {
-        if (userChoice === NameConflictChoice.RENAME) {
-          let counter = 1;
-          while (true) {
-            const baseName = uniqueName.replace(/\s\(\d+\)$/, '');
-            uniqueName = `${baseName} (${counter})`;
-
-            counter++;
-            try {
-              innerEntity = await this.foldersRepository.findOneByCondition({
-                parentFolderId,
-                folderName: uniqueName,
-              });
-            } catch (error) {
-              if (!(error instanceof NotFoundException)) {
-                throw new InternalServerErrorException(error, { cause: error });
-              }
-              innerEntity = null;
-            }
-
-            if (!innerEntity) {
-              return uniqueName;
-            }
-          }
-        }
-
-        if (userChoice === NameConflictChoice.OVERWRITE) {
-          try {
-            await this.foldersRepository.deleteById(innerEntity.id);
-          } catch (error) {
-            throw error;
-          }
-
-          return uniqueName;
-        }
-      }
-
-      return uniqueName;
-    } catch (error) {
-      throw new Error(`Failed to handle file conflict: ${error.message}`, {
-        cause: error,
-      });
-    }
-  }
 
   async deleteFolderRecursively(
     currentUserId: UUID,

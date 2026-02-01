@@ -1,10 +1,7 @@
-import { IsEnum, IsNotEmpty, IsString, IsUUID } from 'class-validator';
+import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
 import { UUID } from 'crypto';
 
-export enum UpdateRole {
-  READER = 'reader',
-  WRITER = 'writer',
-}
+export type publicAccessRole = 'reader' | 'writer';
 
 export class CreateFilePermissionsDto {
   @IsUUID()
@@ -13,6 +10,5 @@ export class CreateFilePermissionsDto {
 
   @IsString()
   @IsNotEmpty()
-  @IsEnum(UpdateRole)
-  readonly role: UpdateRole;
+  readonly role: publicAccessRole;
 }

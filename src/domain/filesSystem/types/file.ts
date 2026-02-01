@@ -1,13 +1,17 @@
 import { Exclude } from 'class-transformer';
 import { InferSelectModel } from 'drizzle-orm';
 import { MakeOptional } from '@/database/types/make-optional';
+import { publicAccessRole } from '../dto/create-file-permissions';
 import { filesSchema } from '../schema/files.schema';
 
 type FileInferSelect = InferSelectModel<typeof filesSchema>;
 
 type FileWithOptionalFields = MakeOptional<
   FileInferSelect,
-  'fileDescription' | 'fileStaticUrl' | 'fileStaticCreatedAt'
+  | 'fileDescription'
+  | 'fileStaticUrl'
+  | 'fileStaticCreatedAt'
+  | 'publicAccessRole'
 >;
 
 export class File implements FileWithOptionalFields {
@@ -24,7 +28,7 @@ export class File implements FileWithOptionalFields {
   fileGoogleDriveClientEmail: string;
   uploadDate: Date;
   @Exclude()
-  isPublic: boolean;
+  publicAccessRole?: publicAccessRole;
   fileDescription?: string;
   fileStaticUrl?: string;
   fileStaticCreatedAt?: Date;

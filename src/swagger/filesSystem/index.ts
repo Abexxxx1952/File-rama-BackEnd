@@ -88,7 +88,7 @@ export function ApiFilesSystemGet() {
             'google-drive@fiery-booth-447215-n7.iam.gserviceaccount.com',
           uploadDate: '2025-01-20T12:50:28.010Z',
           fileDescription: null,
-          isPublic: false,
+          publicAccessRole: null,
         },
         {
           id: 'fb3bc694-1bd7-443b-9d0f-92b23cc690d3',
@@ -108,7 +108,7 @@ export function ApiFilesSystemGet() {
             'google-drive@fiery-booth-447215-n7.iam.gserviceaccount.com',
           uploadDate: '2025-01-20T12:43:10.817Z',
           fileDescription: null,
-          isPublic: false,
+          publicAccessRole: 'reader',
         },
       ],
     })(target, propertyKey, descriptor);

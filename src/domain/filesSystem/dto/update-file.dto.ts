@@ -9,12 +9,12 @@ export class UpdateFileDto {
   @IsOptional()
   @IsString()
   @IsNotEmpty()
-  readonly fileName?: string;
+  fileName?: string;
 
   @IsOptional()
   @IsUUID()
   @IsNotEmpty()
-  readonly parentFolderId?: UUID;
+  readonly parentFolderId?: UUID | null;
 
   @IsOptional()
   @IsString()

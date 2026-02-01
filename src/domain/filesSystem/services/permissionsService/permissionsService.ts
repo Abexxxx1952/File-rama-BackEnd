@@ -38,7 +38,7 @@ export class PermissionsService {
         throw new ForbiddenException('You do not have access to this file');
       }
 
-      if (file.isPublic && file.fileDownloadUrl) {
+      if (file.publicAccessRole === createFilePermissionsDto.role) {
         return file;
       }
 
@@ -56,7 +56,7 @@ export class PermissionsService {
       });
 
       return await this.filesRepository.updateById(file.id, {
-        isPublic: true,
+        publicAccessRole: createFilePermissionsDto.role,
       });
     } catch (error) {
       throw error;
@@ -79,7 +79,7 @@ export class PermissionsService {
         throw new ForbiddenException('You do not have access to this file');
       }
 
-      if (!file.isPublic) {
+      if (file.publicAccessRole === null) {
         return file;
       }
 
@@ -109,7 +109,7 @@ export class PermissionsService {
       }
 
       return await this.filesRepository.updateById(file.id, {
-        isPublic: false,
+        publicAccessRole: null,
       });
     } catch (error) {
       throw error;

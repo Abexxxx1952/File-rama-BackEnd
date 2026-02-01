@@ -156,7 +156,7 @@ export class FilesController {
     }
 
     return await this.filesRepository.findAllByCondition(
-      { ...parsedCondition, isPublic: true },
+      { ...parsedCondition, publicAccessRole: { notNull: true } },
       offset,
       limit,
     );
@@ -247,7 +247,7 @@ export class FilesController {
     );
   }
 
-  @Patch('deleteFilePublicPermissions')
+  @Patch('deleteFilePublicPermissions/:fileId')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
   @CacheOptionInvalidateCache({

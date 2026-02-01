@@ -1,8 +1,8 @@
 import { relations } from 'drizzle-orm';
 import {
   bigint,
-  boolean,
   index,
+  pgEnum,
   pgTable,
   text,
   timestamp,
@@ -11,6 +11,8 @@ import {
 } from 'drizzle-orm/pg-core';
 import { usersSchema } from 'src/domain/users/schema/users.schema';
 import { foldersSchema } from './folder.schema';
+
+const publicAccessRoleEnum = pgEnum('public_access_role', ['reader', 'writer']);
 
 export const filesSchema = pgTable(
   'files',
@@ -36,7 +38,7 @@ export const filesSchema = pgTable(
     ).notNull(),
     uploadDate: timestamp('upload_date').defaultNow().notNull(),
     fileDescription: text('file_description'),
-    isPublic: boolean('is_public').default(false).notNull(),
+    publicAccessRole: publicAccessRoleEnum('public_access_role'),
   },
   (table) => {
     return {

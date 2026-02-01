@@ -3,7 +3,6 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
-  InternalServerErrorException,
   NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
@@ -185,7 +184,7 @@ export class FileTransferService implements OnModuleInit {
             fileName = part.filename;
             mimeType = part.mimetype;
 
-            fileName = await this.handleFileNameConflict(
+            fileName = await this.filesRepository.handleFileNameConflict(
               parentFolderId,
               fileName,
               conflictChoice,
@@ -246,7 +245,7 @@ export class FileTransferService implements OnModuleInit {
                   body: stream,
                 },
                 fields:
-                  'id, webViewLink, webContentLink, size, createdTime, fileExtension, parents',
+                  'id, webViewLink, webContentLink, size, createdTime,  fileExtension, parents',
               });
 
               const file = await this.filesRepository.create({
@@ -262,7 +261,7 @@ export class FileTransferService implements OnModuleInit {
                 fileGoogleDriveParentFolderId: response.data.parents[0],
                 fileGoogleDriveClientEmail: clientEmail,
                 uploadDate: new Date(response.data.createdTime),
-                isPublic: parentFolderGoogleDriveId ? true : false,
+                publicAccessRole: parentFolderGoogleDriveId ? 'reader' : null,
               });
 
               await this.statsRepository.incrementFileCount(user.id);
@@ -364,7 +363,7 @@ export class FileTransferService implements OnModuleInit {
   async streamPublicFile(fileId: UUID, res: FastifyReply): Promise<void> {
     const file = await this.filesRepository.findById(fileId);
 
-    if (!file || !file.isPublic) {
+    if (!file || file.publicAccessRole === null) {
       throw new NotFoundException('File not found');
     }
 
@@ -530,74 +529,6 @@ export class FileTransferService implements OnModuleInit {
       this.activeUploads.delete(userId);
     } else {
       this.activeUploads.set(userId, current - 1);
-    }
-  }
-  private async handleFileNameConflict(
-    parentFolderId: string | null,
-    name: string,
-    userChoice: NameConflictChoice = NameConflictChoice.RENAME,
-  ): Promise<string> {
-    let innerEntity: File;
-    let uniqueName = name;
-    try {
-      try {
-        innerEntity = await this.filesRepository.findOneByCondition({
-          parentFolderId,
-          fileName: uniqueName,
-        });
-      } catch (error) {
-        if (!(error instanceof NotFoundException)) {
-          throw new InternalServerErrorException(error, { cause: error });
-        }
-      }
-
-      if (innerEntity) {
-        if (userChoice === NameConflictChoice.RENAME) {
-          let counter = 1;
-          while (true) {
-            const extension = uniqueName.split('.').pop() || '';
-            const nameWithoutExtension = uniqueName.slice(
-              0,
-              -(extension.length ? extension.length + 1 : 0),
-            );
-            const baseName = nameWithoutExtension.replace(/\s\(\d+\)$/, '');
-            uniqueName = `${baseName} (${counter}).${extension}`;
-
-            counter++;
-            try {
-              innerEntity = await this.filesRepository.findOneByCondition({
-                parentFolderId,
-                fileName: uniqueName,
-              });
-            } catch (error) {
-              if (!(error instanceof NotFoundException)) {
-                throw new InternalServerErrorException(error);
-              }
-              innerEntity = null;
-            }
-
-            if (!innerEntity) {
-              return uniqueName;
-            }
-          }
-        }
-
-        if (userChoice === NameConflictChoice.OVERWRITE) {
-          try {
-            await this.filesRepository.deleteById(innerEntity.id);
-          } catch (error) {
-            throw error;
-          }
-
-          return uniqueName;
-        }
-      }
-
-      return uniqueName;
-    } catch (error) {
-      throw new Error(`Failed to handle file conflict: ${error.message}`, {
-        cause: error,
-      });
     }
   }
 
