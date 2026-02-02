@@ -10,6 +10,7 @@ import { AuthModule } from './auth/auth.module';
 import { EmailConfirmationModule } from './auth/email-confirmation/email-confirmation.module';
 import { UsersRepository } from './repository/users.repository';
 import { UsersController } from './users.controller';
+import { UsersService } from './users.service';
 
 @Module({
   imports: [
@@ -27,11 +28,12 @@ import { UsersController } from './users.controller';
   ],
   controllers: [UsersController],
   providers: [
+    UsersService,
     {
       provide: USERS_REPOSITORY,
       useClass: UsersRepository,
     },
   ],
-  exports: [USERS_REPOSITORY],
+  exports: [USERS_REPOSITORY, UsersService],
 })
 export class UsersModule {}

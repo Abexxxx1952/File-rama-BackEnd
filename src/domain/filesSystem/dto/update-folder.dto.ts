@@ -4,12 +4,12 @@ import { UUID } from 'crypto';
 export class UpdateFolderDto {
   @IsUUID()
   @IsNotEmpty()
-  readonly folderId: UUID | null;
+  readonly folderId: UUID;
 
   @IsOptional()
   @IsString()
   @IsNotEmpty()
-  readonly folderName?: string;
+  folderName?: string;
 
   @IsOptional()
   @IsUUID()

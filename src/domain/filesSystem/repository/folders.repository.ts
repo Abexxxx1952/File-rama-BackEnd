@@ -22,51 +22,6 @@ export class FoldersRepository extends BaseAbstractRepository<
     super(database, foldersSchema, 'Folder');
   }
 
-  async updateFolder(
-    currentUserId: UUID,
-    updateFolderDto: UpdateFolderDto,
-  ): Promise<Folder> {
-    let folderName: string | null = null;
-    let { folderId, ...rest } = updateFolderDto;
-    const folder = await this.findById(folderId);
-
-    if (
-      updateFolderDto.parentFolderId ||
-      updateFolderDto.parentFolderId === null
-    ) {
-      folderName = await this.handleFolderNameConflict(
-        updateFolderDto.parentFolderId,
-        updateFolderDto.folderName
-          ? updateFolderDto.folderName
-          : folder.folderName,
-      );
-      if (folderName !== folder.folderName) {
-        rest.folderName = folderName;
-      }
-    }
-
-    if (updateFolderDto.folderName && !folderName) {
-      folderName = await this.handleFolderNameConflict(
-        folder.parentFolderId,
-        updateFolderDto.folderName,
-      );
-      if (folderName !== folder.folderName) {
-        rest.folderName = folderName;
-      }
-    }
-
-    try {
-      const result = await this.updateByCondition(
-        { id: folderId, userId: currentUserId },
-        rest,
-      );
-
-      return result[0];
-    } catch (error) {
-      throw error;
-    }
-  }
-
   async handleFolderNameConflict(
     parentId: string | null,
     name: string,

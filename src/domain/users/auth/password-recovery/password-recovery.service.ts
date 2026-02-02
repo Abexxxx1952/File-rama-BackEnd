@@ -8,6 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { TOKENS_REPOSITORY, USERS_REPOSITORY } from '@/configs/providersTokens';
 import { MailService } from '@/mail/mail.service';
 import { UsersRepository } from '../../repository/users.repository';
+import { UsersService } from '../../users.service';
 import { TokensRepository } from '../repository/tokens.repository';
 import { Token, TokenTypeEnum } from '../types/token';
 import { NewPasswordDto } from './dto/new-password.dto';
@@ -20,6 +21,7 @@ export class PasswordRecoveryService {
     private readonly tokensRepository: TokensRepository,
     @Inject(USERS_REPOSITORY)
     private readonly usersRepository: UsersRepository,
+    private readonly usersService: UsersService,
     private readonly mailService: MailService,
   ) {}
 
@@ -64,7 +66,7 @@ export class PasswordRecoveryService {
         throw new BadRequestException();
       }
 
-      const hashedPassword = await this.usersRepository.hashPassword(
+      const hashedPassword = await this.usersService.hashPassword(
         newPasswordDto.password,
       );
 

@@ -12,11 +12,12 @@ import { FilesController } from './filesSystem.controller';
 import { FilesSystemService } from './filesSystem.service';
 import { FilesRepository } from './repository/files.repository';
 import { FoldersRepository } from './repository/folders.repository';
+import { DeleteFileSystemService } from './services/deleteFileSystemService/deleteFileSystemService';
 import { FileTransferService } from './services/fileTransferService/fileTransferService';
-import { FolderCommandService } from './services/folderCommandService/folderCommandService';
 import { GoogleDriveClient } from './services/googleDriveClient/googleDriveClient';
 import { PermissionsService } from './services/permissionsService/permissionsService';
 import { StaticFilesService } from './services/staticFilesService/staticFilesService';
+import { UpdateFileSystemService } from './services/updateFileSystemService/updateFileSystemService';
 
 @Module({
   imports: [DatabaseModule, ConfigModule, UsersModule, JwtModule, StatsModule],
@@ -25,9 +26,10 @@ import { StaticFilesService } from './services/staticFilesService/staticFilesSer
     FilesSystemService,
     GoogleDriveClient,
     FileTransferService,
-    FolderCommandService,
     PermissionsService,
     StaticFilesService,
+    UpdateFileSystemService,
+    DeleteFileSystemService,
     {
       provide: FILES_REPOSITORY,
       useClass: FilesRepository,

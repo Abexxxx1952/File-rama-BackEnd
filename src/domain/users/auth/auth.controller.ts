@@ -22,7 +22,6 @@ import {
   CacheOptionInvalidateCache,
   CacheOptions,
 } from '../../../common/interceptors/cache.interceptor';
-import { USERS_REPOSITORY } from '../../../configs/providersTokens';
 import {
   ApiUsersGetLoginGitHub,
   ApiUsersGetLoginGitHubCallback,
@@ -34,7 +33,7 @@ import {
   ApiUsersPostRefresh,
   ApiUsersPostRegistration,
 } from '../../../swagger/users/index';
-import { UsersRepository } from './../repository/users.repository';
+import { UsersService } from '../users.service';
 import { User } from './../types/users';
 import { AuthService } from './auth.service';
 import { LoginLocalUserDtoWithoutPassword } from './dto/login-user-local.dto';
@@ -55,8 +54,8 @@ import { AttachedUser } from './types/attachedUser';
 @Controller('v1/auth')
 export class AuthController {
   constructor(
-    @Inject(USERS_REPOSITORY)
-    private readonly usersRepository: UsersRepository,
+    @Inject()
+    private readonly usersService: UsersService,
     private readonly authService: AuthService,
   ) {}
 
@@ -66,7 +65,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiUsersGetStatus()
   async status(@CurrentUser() currentUser: AttachedUser): Promise<User> {
-    return await this.usersRepository.status(currentUser.email);
+    return await this.usersService.status(currentUser.email);
   }
 
   @Post('registration')
@@ -81,7 +80,7 @@ export class AuthController {
   @UseInterceptors(CacheInterceptor)
   @ApiUsersPostRegistration()
   async create(@Body() createUserLocalDto: CreateUserLocalDto): Promise<User> {
-    return await this.usersRepository.createUserLocal(createUserLocalDto);
+    return await this.usersService.createUserLocal(createUserLocalDto);
   }
 
   @Post('loginLocal')

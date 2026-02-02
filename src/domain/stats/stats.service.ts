@@ -1,10 +1,12 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { UUID } from 'crypto';
 import { STATS_REPOSITORY, USERS_REPOSITORY } from '@/configs/providersTokens';
 import { UsersRepository } from '@/domain/users/repository/users.repository';
 import { GoogleDriveClient } from '../filesSystem/services/googleDriveClient/googleDriveClient';
+import { GoogleServiceAccounts } from '../users/types/google-service-accounts';
 import { StatsRepository } from './repository/stats.repository';
 import type { DriveInfoResult } from './types/driveInfoResult';
+import { Stat } from './types/stat';
 
 @Injectable()
 export class StatsService {
@@ -68,5 +70,38 @@ export class StatsService {
     } catch (error) {
       throw error;
     }
+  }
+
+  async createUserStats(
+    id: UUID,
+    googleServiceAccounts: GoogleServiceAccounts[],
+  ): Promise<Stat> {
+    const totalSize = googleServiceAccounts.length * 15 * 1024 * 1024 * 1024; // 15GB per account
+
+    const initialUserStats = {
+      userId: id,
+      fileCount: 0,
+      folderCount: 0,
+      totalSize,
+      usedSize: 0,
+    };
+
+    const result = await this.statsRepository.create(initialUserStats);
+
+    return result;
+  }
+
+  async updateUserStats(
+    id: UUID,
+    googleServiceAccounts: GoogleServiceAccounts[],
+  ): Promise<Stat> {
+    const totalSize = googleServiceAccounts.length * 15 * 1024 * 1024 * 1024; // 15GB per account
+
+    const result = await this.statsRepository.updateByCondition(
+      { userId: id },
+      { totalSize },
+    );
+
+    return result[0];
   }
 }

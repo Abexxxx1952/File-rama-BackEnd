@@ -25,6 +25,6 @@ import { StatsService } from './stats.service';
       useClass: StatsRepository,
     },
   ],
-  exports: [STATS_REPOSITORY],
+  exports: [STATS_REPOSITORY, StatsService],
 })
 export class StatsModule {}

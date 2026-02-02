@@ -1,4 +1,10 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { drive_v3, google } from 'googleapis';
 import { GoogleAuth, JWT } from 'googleapis-common';
 import { User } from '@/domain/users/types/users';

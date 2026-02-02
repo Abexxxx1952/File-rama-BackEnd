@@ -15,19 +15,14 @@ import { TokenVerificationDto } from './dto/token-verification.dto';
 
 @Injectable()
 export class EmailConfirmationService {
-  private usersRepository: UsersRepository;
   public constructor(
     @Inject(TOKENS_REPOSITORY)
     private readonly tokensRepository: TokensRepository,
+    @Inject(USERS_REPOSITORY)
+    private readonly usersRepository: UsersRepository,
     private readonly mailService: MailService,
     private readonly moduleRef: ModuleRef,
   ) {}
-
-  async onModuleInit() {
-    this.usersRepository = this.moduleRef.get(USERS_REPOSITORY, {
-      strict: false,
-    });
-  }
 
   public async tokenVerification(
     tokenVerificationDto: TokenVerificationDto,

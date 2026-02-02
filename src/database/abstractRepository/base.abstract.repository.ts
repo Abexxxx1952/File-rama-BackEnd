@@ -8,7 +8,9 @@ import { validate } from 'class-validator';
 import { UUID } from 'crypto';
 import {
   and,
+  asc,
   Column,
+  desc,
   eq,
   inArray,
   InferInsertModel,
@@ -19,7 +21,8 @@ import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { PgTable, TableConfig } from 'drizzle-orm/pg-core';
 import { NameConflictChoice } from '@/domain/filesSystem/types/upload-name-conflict';
 import { handleNameConflictParams } from '../types/handleNameConflictParams';
-import { RelatedTables, TableWithId } from '../types/types';
+import { RelatedTables, TableWithId } from '../types/orm-types';
+import { OrderBy } from '../types/sort';
 import { WhereCondition } from '../types/where-condition';
 import { BaseInterfaceRepository } from './base.interface.repository';
 
@@ -281,6 +284,7 @@ export abstract class BaseAbstractRepository<
    */
   public async findAllByCondition(
     condition: WhereCondition<T>,
+    orderBy?: OrderBy<T>[],
     offset?: number,
     limit?: number,
   ): Promise<T[]> {
@@ -313,6 +317,22 @@ export abstract class BaseAbstractRepository<
         .from(this.table)
         .where(and(...conditions))
         .$dynamic();
+
+      if (orderBy?.length) {
+        const orderExpressions = orderBy.map(({ column, order = 'asc' }) => {
+          const col = this.table[column as keyof Schema];
+
+          if (!(col instanceof Column)) {
+            throw new BadRequestException(
+              `Invalid orderBy column ${String(column)}`,
+            );
+          }
+
+          return order === 'asc' ? asc(col) : desc(col);
+        });
+
+        query = query.orderBy(...orderExpressions);
+      }
 
       if (offset !== undefined && offset !== null) {
         query = query.offset(offset);
@@ -347,9 +367,29 @@ export abstract class BaseAbstractRepository<
    * @param limit - Maximum number of records to return.
    * @returns An array of entities.
    */
-  public async findAll(offset?: number, limit?: number): Promise<T[]> {
+  public async findAll(
+    orderBy?: OrderBy<T>[],
+    offset?: number,
+    limit?: number,
+  ): Promise<T[]> {
     try {
       let query = this.database.select().from(this.table).$dynamic();
+
+      if (orderBy?.length) {
+        const orderExpressions = orderBy.map(({ column, order = 'asc' }) => {
+          const col = this.table[column as keyof Schema];
+
+          if (!(col instanceof Column)) {
+            throw new BadRequestException(
+              `Invalid orderBy column ${String(column)}`,
+            );
+          }
+
+          return order === 'asc' ? asc(col) : desc(col);
+        });
+
+        query = query.orderBy(...orderExpressions);
+      }
 
       if (offset !== undefined) {
         query = query.offset(offset);
@@ -633,6 +673,36 @@ export abstract class BaseAbstractRepository<
       throw error;
     }
     return parsedCondition;
+  }
+
+  /**
+   * Parse entities by a condition.
+   * @param condition - The condition to sort entities.
+   * @param DTO - The DTO to validate entities.
+   * @returns Parsed entities.
+   */
+  public async parsedArrayCondition<T extends object>(
+    orderBy: { orderBy: string },
+    DTO: new () => T,
+  ): Promise<T[]> {
+    let parsed: any;
+    try {
+      parsed = JSON.parse(orderBy.orderBy);
+    } catch {
+      throw new BadRequestException('Invalid JSON format');
+    }
+
+    const instances = plainToInstance(DTO, parsed as T[]);
+    const errors = await Promise.all(instances.map((i) => validate(i)));
+
+    const allErrors = errors.flat();
+    if (allErrors.length > 0) {
+      throw new BadRequestException(
+        'Validation failed: ' + allErrors.toString(),
+      );
+    }
+
+    return instances;
   }
 
   /**

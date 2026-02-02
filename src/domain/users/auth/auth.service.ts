@@ -12,6 +12,7 @@ import { FastifyReply } from 'fastify';
 import { TOKENS_REPOSITORY, USERS_REPOSITORY } from '@/configs/providersTokens';
 import { UsersRepository } from '../repository/users.repository';
 import { User } from '../types/users';
+import { UsersService } from '../users.service';
 import { TokensRepository } from './repository/tokens.repository';
 import { TwoFactorAuthService } from './two-factor-auth/two-factor-auth.service';
 import { AtRtTokens } from './types/atRt-tokens';
@@ -37,6 +38,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     @Inject(USERS_REPOSITORY)
     private readonly usersRepository: UsersRepository,
+    private readonly usersService: UsersService,
     @Inject(TOKENS_REPOSITORY)
     private readonly tokensRepository: TokensRepository,
     private readonly jwtService: JwtService,
@@ -292,7 +294,7 @@ export class AuthService {
 
     if (!existUser) {
       try {
-        existUser = await this.usersRepository.createUserOAuth(parseUserOAuth);
+        existUser = await this.usersService.createUserOAuth(parseUserOAuth);
       } catch (error) {
         throw error;
       }

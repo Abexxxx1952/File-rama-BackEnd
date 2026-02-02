@@ -55,40 +55,6 @@ export class FilesRepository extends BaseAbstractRepository<
     }
   }
 
-  async resolveFileName(
-    dto: UpdateFileDto,
-    fileName: string,
-    fileParentFolderId: string | null,
-  ): Promise<string | null> {
-    const targetParentId =
-      dto.parentFolderId !== undefined
-        ? dto.parentFolderId
-        : fileParentFolderId;
-
-    const targetName = dto.fileName ?? fileName;
-
-    const resolvedName = await this.handleFileNameConflict(
-      targetParentId,
-      targetName,
-    );
-
-    if (resolvedName === fileName) {
-      return null;
-    }
-
-    return resolvedName;
-  }
-
-  getExtension(fileName: string): string | null {
-    const lastDot = fileName.lastIndexOf('.');
-
-    if (lastDot <= 0 || lastDot === fileName.length - 1) {
-      return null;
-    }
-
-    return fileName.slice(lastDot + 1);
-  }
-
   async findExpiredFiles(threshold: Date): Promise<File[]> {
     return this.database
       .select()

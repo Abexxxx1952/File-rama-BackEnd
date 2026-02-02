@@ -33,6 +33,7 @@ import {
   FOLDERS_REPOSITORY,
 } from '@/configs/providersTokens';
 import { PaginationParams } from '@/database/paginationDto/pagination.dto';
+import { OrderBy } from '@/database/types/sort';
 import {
   ApiFilesSystemDeleteDeleteFile,
   ApiFilesSystemDeleteDeleteFolder,
@@ -67,6 +68,7 @@ import { DeleteFileDto } from './dto/delete-file.dto';
 import { DeleteFolderDto } from './dto/delete-folder.dto';
 import { DeleteManyDto } from './dto/delete-many.dto';
 import { FindFilesByConditionsDto } from './dto/find-public-file-by-conditions.dto';
+import { IsFolderFirstDto } from './dto/if-folder-first.dto';
 import { UpdateFileDto } from './dto/update-file.dto';
 import { UpdateFolderDto } from './dto/update-folder.dto';
 import { UpdateManyDto } from './dto/update-many.dto';
@@ -96,12 +98,18 @@ export class FilesController {
   @ApiFilesSystemGet()
   async findSlice(
     @CurrentUser('id') currentUserId: UUID,
-    @Query() { parentFolderId }: { parentFolderId?: string },
+    @Query() { parentFolderId }: { parentFolderId: string },
+    @Query() orderFoldersBy: { orderBy: string },
+    @Query() orderFilesBy: { orderBy: string },
+    @Query() { isFolderFirst }: IsFolderFirstDto,
     @Query() { offset, limit }: PaginationParams,
   ): Promise<(File | Folder)[]> {
     return await this.filesSystemService.findSlice(
       currentUserId,
       parentFolderId,
+      orderFoldersBy,
+      orderFilesBy,
+      isFolderFirst,
       offset,
       limit,
     );
@@ -142,21 +150,12 @@ export class FilesController {
   @ApiFilesSystemGetFindPublicFiles()
   async findPublicFiles(
     @Query() condition: { condition: string },
+    @Query() orderBy: { orderBy: string },
     @Query() { offset, limit }: PaginationParams,
   ): Promise<File[]> {
-    let parsedCondition: FindFilesByConditionsDto;
-    try {
-      parsedCondition =
-        await this.filesRepository.parsedCondition<FindFilesByConditionsDto>(
-          condition,
-          FindFilesByConditionsDto,
-        );
-    } catch (error) {
-      throw error;
-    }
-
-    return await this.filesRepository.findAllByCondition(
-      { ...parsedCondition, publicAccessRole: { notNull: true } },
+    return await this.filesSystemService.findPublicFiles(
+      condition,
+      orderBy,
       offset,
       limit,
     );
@@ -298,7 +297,7 @@ export class FilesController {
     @CurrentUser('id') currentUserId: UUID,
     @Body() updateFolderDto: UpdateFolderDto,
   ): Promise<Folder> {
-    return await this.foldersRepository.updateFolder(
+    return await this.filesSystemService.updateFolder(
       currentUserId,
       updateFolderDto,
     );

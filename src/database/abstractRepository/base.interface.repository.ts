@@ -1,5 +1,6 @@
 import { UUID } from 'crypto';
 import { PgTable, TableConfig } from 'drizzle-orm/pg-core';
+import { OrderBy } from '../types/sort';
 
 export interface BaseInterfaceRepository<
   T,
@@ -38,7 +39,12 @@ export interface BaseInterfaceRepository<
    * @param condition - The condition to filter entities.
    * @returns An array of entities.
    */
-  findAllByCondition(condition: Partial<T>): Promise<T[]>;
+  findAllByCondition(
+    condition: Partial<T>,
+    orderBy?: OrderBy<T>[],
+    offset?: number,
+    limit?: number,
+  ): Promise<T[]>;
 
   /**
    * Find all entities.
