@@ -12,6 +12,7 @@ import { FilesController } from './filesSystem.controller';
 import { FilesSystemService } from './filesSystem.service';
 import { FilesRepository } from './repository/files.repository';
 import { FoldersRepository } from './repository/folders.repository';
+import { CommonFileSystemService } from './services/commonFileSystemService/commonFileSystemService';
 import { DeleteFileSystemService } from './services/deleteFileSystemService/deleteFileSystemService';
 import { FileTransferService } from './services/fileTransferService/fileTransferService';
 import { GoogleDriveClient } from './services/googleDriveClient/googleDriveClient';
@@ -30,6 +31,7 @@ import { UpdateFileSystemService } from './services/updateFileSystemService/upda
     StaticFilesService,
     UpdateFileSystemService,
     DeleteFileSystemService,
+    CommonFileSystemService,
     {
       provide: FILES_REPOSITORY,
       useClass: FilesRepository,

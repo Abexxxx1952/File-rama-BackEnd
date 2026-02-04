@@ -1,14 +1,8 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-  InternalServerErrorException,
-  NotFoundException,
-} from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { drive_v3, google } from 'googleapis';
 import { GoogleAuth, JWT } from 'googleapis-common';
-import { User } from '@/domain/users/types/users';
-import { GoogleAuthDto } from '../../dto/google-auth.dto';
+import { GoogleAuthDto } from '@/domain/filesSystem/dto/google-auth.dto';
+import type { User } from '@/domain/users/types/users';
 
 @Injectable()
 export class GoogleDriveClient {

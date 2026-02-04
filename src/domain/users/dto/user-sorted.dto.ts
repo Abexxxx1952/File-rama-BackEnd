@@ -4,7 +4,7 @@ import { User } from '../types/users';
 
 export class UsersSortedDto {
   @IsNotEmpty()
-  column: keyof User;
+  key: keyof User;
 
   @IsOptional()
   @IsIn(['asc', 'desc'])

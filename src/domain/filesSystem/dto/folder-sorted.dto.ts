@@ -4,7 +4,7 @@ import { Folder } from '../types/folder';
 
 export class FolderSortedDto {
   @IsNotEmpty()
-  column: keyof Folder;
+  key: keyof Folder;
 
   @IsOptional()
   @IsIn(['asc', 'desc'])

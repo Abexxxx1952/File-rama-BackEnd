@@ -4,7 +4,7 @@ import { File } from '../types/file';
 
 export class FindFilesSortedDto {
   @IsNotEmpty()
-  column: keyof File;
+  key: keyof File;
 
   @IsOptional()
   @IsIn(['asc', 'desc'])

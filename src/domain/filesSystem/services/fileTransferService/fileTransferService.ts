@@ -23,15 +23,19 @@ import {
   STATS_REPOSITORY,
   USERS_REPOSITORY,
 } from '@/configs/providersTokens';
+import { FilesRepository } from '@/domain/filesSystem/repository/files.repository';
+import { emitterEventName } from '@/domain/filesSystem/types/emitterEventName';
+import type { File } from '@/domain/filesSystem/types/file';
+import {
+  FileUploadEvent,
+  UploadStatus,
+} from '@/domain/filesSystem/types/file-upload-event';
+import type { FileUploadResult } from '@/domain/filesSystem/types/file-upload-result';
+import { NameConflictChoice } from '@/domain/filesSystem/types/upload-name-conflict';
 import { StatsRepository } from '@/domain/stats/repository/stats.repository';
 import { UsersRepository } from '@/domain/users/repository/users.repository';
-import { User } from '@/domain/users/types/users';
-import { FilesRepository } from '../../repository/files.repository';
-import { emitterEventName } from '../../types/emitterEventName';
-import { File } from '../../types/file';
-import { FileUploadEvent, UploadStatus } from '../../types/file-upload-event';
-import { FileUploadResult } from '../../types/file-upload-result';
-import { NameConflictChoice } from '../../types/upload-name-conflict';
+import type { User } from '@/domain/users/types/users';
+import { CommonFileSystemService } from '../commonFileSystemService/commonFileSystemService';
 import { GoogleDriveClient } from '../googleDriveClient/googleDriveClient';
 import { StaticFilesService } from '../staticFilesService/staticFilesService';
 
@@ -51,6 +55,7 @@ export class FileTransferService implements OnModuleInit {
     private readonly statsRepository: StatsRepository,
     private readonly googleDriveClient: GoogleDriveClient,
     private readonly staticFilesService: StaticFilesService,
+    private readonly commonFileSystemService: CommonFileSystemService,
   ) {
     this.MAX_UPLOADS_PER_USER = this.configService.getOrThrow<number>(
       'MAX_UPLOADS_PER_USER',
@@ -168,7 +173,9 @@ export class FileTransferService implements OnModuleInit {
             }
 
             if (part.fieldname === 'parentFolderId') {
-              parentFolderId = String(part.value);
+              part.value === 'null'
+                ? (parentFolderId = null)
+                : (parentFolderId = String(part.value));
             }
             if (part.fieldname === 'parentFolderGoogleDriveId') {
               parentFolderGoogleDriveId = String(part.value);
@@ -184,11 +191,22 @@ export class FileTransferService implements OnModuleInit {
             fileName = part.filename;
             mimeType = part.mimetype;
 
-            fileName = await this.filesRepository.handleFileNameConflict(
-              parentFolderId,
-              fileName,
-              conflictChoice,
-            );
+            let fileNameWithoutExtension =
+              this.commonFileSystemService.getFileNameWithoutExtension(
+                fileName,
+              );
+            const fileExtension =
+              this.commonFileSystemService.getExtension(fileName) || '';
+
+            fileNameWithoutExtension =
+              await this.commonFileSystemService.handleFileNameConflict(
+                parentFolderId,
+                fileNameWithoutExtension,
+                fileExtension,
+                conflictChoice,
+              );
+
+            fileName = `${fileNameWithoutExtension}.${fileExtension}`;
 
             let receivedBytes = 0;
             let lastSentProgress = 0;
@@ -252,7 +270,7 @@ export class FileTransferService implements OnModuleInit {
                 userId: user.id,
                 fileUrl: response.data.webViewLink,
                 fileDownloadUrl: response.data.webContentLink,
-                fileName,
+                fileName: fileNameWithoutExtension,
                 fileExtension: response.data.fileExtension,
                 fileSize: Number(response.data.size),
                 fileDescription: description,

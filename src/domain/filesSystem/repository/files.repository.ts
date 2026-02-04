@@ -9,7 +9,6 @@ import { UpdateFileDto } from '../dto/update-file.dto';
 import { filesSchema } from '../schema/files.schema';
 import { foldersSchema } from '../schema/folder.schema';
 import { File } from '../types/file';
-import { NameConflictChoice } from '../types/upload-name-conflict';
 
 @Injectable()
 export class FilesRepository extends BaseAbstractRepository<
@@ -73,21 +72,5 @@ export class FilesRepository extends BaseAbstractRepository<
       .execute();
 
     return Number(result[0]?.totalSize ?? 0);
-  }
-
-  async handleFileNameConflict(
-    parentId: string | null,
-    name: string,
-    userChoice: NameConflictChoice = NameConflictChoice.RENAME,
-  ): Promise<string> {
-    const result = await this.handleNameConflict<File>({
-      parentId,
-      parentField: 'parentFolderId',
-      initialName: name,
-      nameField: 'fileName',
-      repository: this,
-      userChoice: userChoice,
-    });
-    return result;
   }
 }

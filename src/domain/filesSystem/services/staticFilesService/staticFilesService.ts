@@ -3,8 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { FILES_REPOSITORY } from '@/configs/providersTokens';
+import { FilesRepository } from '@/domain/filesSystem/repository/files.repository';
 import { AppLogger } from '@/logger/appLogger';
-import { FilesRepository } from '../../repository/files.repository';
 
 @Injectable()
 export class StaticFilesService {

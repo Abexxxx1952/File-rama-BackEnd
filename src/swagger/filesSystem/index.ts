@@ -17,7 +17,6 @@ import { CreateFilePermissionsArgs } from './types/create-file-permissions';
 import { CreateFolderArgs } from './types/create-folder';
 import { DeleteFileArgs } from './types/delete-file.dto';
 import { DeleteFolderArgs } from './types/delete-folder.dto';
-import { DownloadFileArgs } from './types/download-file.dto';
 import { FileModel } from './types/file';
 import {
   FileUploadCompleteModel,
@@ -234,7 +233,7 @@ export function ApiFilesSystemGetFindPublicFiles() {
     descriptor: PropertyDescriptor,
   ) {
     ApiOperation({
-      summary: 'Get all public files and folders.',
+      summary: 'Get all public files and folders',
     })(target, propertyKey, descriptor);
     ApiQuery({ type: FindFilesByConditionWithPaginationParamsArgs })(
       target,
@@ -265,6 +264,58 @@ export function ApiFilesSystemGetFindPublicFiles() {
     ApiResponse({
       status: 404,
       description: 'Files not found',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 429,
+      description: 'ThrottlerException: Too Many Requests',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 500,
+      description: 'Internal Server Error',
+    })(target, propertyKey, descriptor);
+  };
+}
+
+export function ApiFilesSystemGetFolderPath() {
+  return function (
+    target: any,
+    propertyKey: string,
+    descriptor: PropertyDescriptor,
+  ) {
+    ApiOperation({
+      summary: 'Get folder path',
+    })(target, propertyKey, descriptor);
+    ApiCookieAuth('access_token')(target, propertyKey, descriptor);
+    ApiBearerAuth('authorization')(target, propertyKey, descriptor);
+    ApiParam({
+      name: 'id',
+      type: 'UUID',
+      example: '11218517-4043-53b0-8c7a-0e9190c419e7',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 200,
+      description: 'Got folder path',
+      type: [FileModel],
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 400,
+      description: 'Bad Request',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 400,
+      description: 'Invalid JSON format',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 400,
+      description: 'Validation failed: ',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 401,
+      description: 'Unauthorized',
+    })(target, propertyKey, descriptor);
+    ApiResponse({
+      status: 404,
+      description: 'Folder not found',
     })(target, propertyKey, descriptor);
     ApiResponse({
       status: 429,
@@ -366,6 +417,11 @@ export function ApiFilesSystemGetDownloadFile() {
     })(target, propertyKey, descriptor);
     ApiCookieAuth('access_token')(target, propertyKey, descriptor);
     ApiBearerAuth('authorization')(target, propertyKey, descriptor);
+    ApiParam({
+      name: 'id',
+      type: 'UUID',
+      example: '11218517-4043-53b0-8c7a-0e9190c419e7',
+    })(target, propertyKey, descriptor);
     ApiOkResponse({
       description: 'Binary file stream',
       schema: {
@@ -402,7 +458,11 @@ export function ApiFilesSystemGetStreamPublicFile() {
     ApiOperation({
       summary: 'Stream file.',
     })(target, propertyKey, descriptor);
-
+    ApiParam({
+      name: 'id',
+      type: 'UUID',
+      example: '11218517-4043-53b0-8c7a-0e9190c419e7',
+    })(target, propertyKey, descriptor);
     ApiOkResponse({
       description: 'Binary file stream',
       schema: {
@@ -481,6 +541,11 @@ export function ApiFilesSystemPatchDeleteFilePublicPermissions() {
     })(target, propertyKey, descriptor);
     ApiCookieAuth('access_token')(target, propertyKey, descriptor);
     ApiBearerAuth('authorization')(target, propertyKey, descriptor);
+    ApiParam({
+      name: 'id',
+      type: 'UUID',
+      example: '11218517-4043-53b0-8c7a-0e9190c419e7',
+    })(target, propertyKey, descriptor);
     ApiResponse({
       status: 200,
       description: 'Permission deleted successfully',
@@ -644,8 +709,10 @@ export function ApiFilesSystemDeleteDeleteFile() {
     })(target, propertyKey, descriptor);
     ApiCookieAuth('access_token')(target, propertyKey, descriptor);
     ApiBearerAuth('authorization')(target, propertyKey, descriptor);
-    ApiBody({
-      type: DeleteFileArgs,
+    ApiParam({
+      name: 'id',
+      type: 'UUID',
+      example: '11218517-4043-53b0-8c7a-0e9190c419e7',
     })(target, propertyKey, descriptor);
     ApiResponse({
       status: 200,
@@ -682,8 +749,10 @@ export function ApiFilesSystemDeleteDeleteFolder() {
     })(target, propertyKey, descriptor);
     ApiCookieAuth('access_token')(target, propertyKey, descriptor);
     ApiBearerAuth('authorization')(target, propertyKey, descriptor);
-    ApiBody({
-      type: DeleteFolderArgs,
+    ApiParam({
+      name: 'id',
+      type: 'UUID',
+      example: '11218517-4043-53b0-8c7a-0e9190c419e7',
     })(target, propertyKey, descriptor);
     ApiResponse({
       status: 200,

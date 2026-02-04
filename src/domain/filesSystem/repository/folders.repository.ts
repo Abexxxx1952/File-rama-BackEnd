@@ -21,20 +21,4 @@ export class FoldersRepository extends BaseAbstractRepository<
   ) {
     super(database, foldersSchema, 'Folder');
   }
-
-  async handleFolderNameConflict(
-    parentId: string | null,
-    name: string,
-    userChoice: NameConflictChoice = NameConflictChoice.RENAME,
-  ): Promise<string> {
-    const result = await this.handleNameConflict<Folder>({
-      parentId,
-      parentField: 'parentFolderId',
-      initialName: name,
-      nameField: 'folderName',
-      repository: this,
-      userChoice: userChoice,
-    });
-    return result;
-  }
 }

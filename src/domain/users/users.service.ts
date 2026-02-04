@@ -117,7 +117,7 @@ export class UsersService {
   }
 
   async findAll(
-    orderBy?: { orderBy: string },
+    orderBy?: string,
     offset?: number,
     limit?: number,
   ): Promise<User[]> {
@@ -135,8 +135,8 @@ export class UsersService {
     }
   }
   async findManyByConditions(
-    condition: { condition: string },
-    orderBy?: { orderBy: string },
+    condition: string,
+    orderBy?: string,
     offset?: number,
     limit?: number,
   ): Promise<User[]> {
@@ -165,7 +165,7 @@ export class UsersService {
     }
   }
 
-  async findOneByCondition(condition: { condition: string }): Promise<User> {
+  async findOneByCondition(condition: string): Promise<User> {
     try {
       const parsedCondition =
         await this.usersRepository.parsedCondition<FindUsersByConditionsDto>(
@@ -181,7 +181,7 @@ export class UsersService {
 
   async findByIdWithRelations(
     currentUserId: UUID,
-    condition: { condition: string },
+    condition: string,
   ): Promise<UserWithRelatedEntity> {
     try {
       const parsedRelations =

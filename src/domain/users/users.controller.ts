@@ -63,7 +63,7 @@ export class UsersController {
   @UseInterceptors(CacheInterceptor)
   @ApiUsersGet()
   async findAll(
-    @Query() orderBy: { orderBy: string },
+    @Query() { orderBy }: { orderBy: string },
     @Query() { offset, limit }: PaginationParams,
   ): Promise<User[]> {
     return await this.usersService.findAll(orderBy, offset, limit);
@@ -86,7 +86,7 @@ export class UsersController {
   @ApiUsersGetFindWithRelations()
   async findByIdWithRelations(
     @CurrentUser('id') currentUserId: UUID,
-    @Query() condition: { condition: string },
+    @Query() { condition }: { condition: string },
   ): Promise<UserWithRelatedEntity> {
     return await this.usersService.findByIdWithRelations(
       currentUserId,
@@ -99,7 +99,7 @@ export class UsersController {
   @UseInterceptors(new TransformResultInterceptor(UserPoor))
   @ApiUsersGetFindOneBy()
   async findOneByCondition(
-    @Query() condition: { condition: string },
+    @Query() { condition }: { condition: string },
   ): Promise<User> {
     return await this.usersService.findOneByCondition(condition);
   }
@@ -109,8 +109,8 @@ export class UsersController {
   @UseInterceptors(new TransformResultInterceptor(UserPoor))
   @ApiUsersGetFindManyBy()
   async findManyByCondition(
-    @Query() condition: { condition: string },
-    @Query() orderBy: { orderBy: string },
+    @Query() { condition }: { condition: string },
+    @Query() { orderBy }: { orderBy: string },
     @Query() { offset, limit }: PaginationParams,
   ): Promise<User[]> {
     return await this.usersService.findManyByConditions(

@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsDate,
   IsNotEmpty,
@@ -44,10 +44,11 @@ export class FindFilesByConditionsDto {
   @IsNotEmpty()
   readonly fileSize?: number;
 
+  @Transform(({ value }) => (value === 'null' ? null : value))
   @IsOptional()
   @IsUUID()
   @IsNotEmpty()
-  readonly parentFolderId?: UUID;
+  readonly parentFolderId?: UUID | null;
 
   @IsOptional()
   @IsString()

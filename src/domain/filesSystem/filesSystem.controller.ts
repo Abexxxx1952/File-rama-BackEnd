@@ -33,7 +33,6 @@ import {
   FOLDERS_REPOSITORY,
 } from '@/configs/providersTokens';
 import { PaginationParams } from '@/database/paginationDto/pagination.dto';
-import { OrderBy } from '@/database/types/sort';
 import {
   ApiFilesSystemDeleteDeleteFile,
   ApiFilesSystemDeleteDeleteFolder,
@@ -41,6 +40,7 @@ import {
   ApiFilesSystemGet,
   ApiFilesSystemGetDownloadFile,
   ApiFilesSystemGetFindPublicFiles,
+  ApiFilesSystemGetFolderPath,
   ApiFilesSystemGetStreamPublicFile,
   ApiFilesSystemPatchCreateFilePublicPermissions,
   ApiFilesSystemPatchDeleteFilePublicPermissions,
@@ -64,21 +64,19 @@ import {
 } from './cache/cache-paths';
 import { CreateFilePermissionsDto } from './dto/create-file-permissions';
 import { CreateFolderDto } from './dto/create-folder.dto';
-import { DeleteFileDto } from './dto/delete-file.dto';
-import { DeleteFolderDto } from './dto/delete-folder.dto';
 import { DeleteManyDto } from './dto/delete-many.dto';
-import { FindFilesByConditionsDto } from './dto/find-public-file-by-conditions.dto';
 import { IsFolderFirstDto } from './dto/if-folder-first.dto';
+import { ParentFolderIdDto } from './dto/parent-folder-id.dto';
 import { UpdateFileDto } from './dto/update-file.dto';
 import { UpdateFolderDto } from './dto/update-folder.dto';
 import { UpdateManyDto } from './dto/update-many.dto';
 import { FilesSystemService } from './filesSystem.service';
 import { FilesRepository } from './repository/files.repository';
 import { FoldersRepository } from './repository/folders.repository';
-import { File } from './types/file';
-import { FileUploadResult } from './types/file-upload-result';
-import { FileSystemItemChangeResult } from './types/fileSystemItem-change-result';
-import { Folder } from './types/folder';
+import type { File } from './types/file';
+import type { FileUploadResult } from './types/file-upload-result';
+import type { FileSystemItemChangeResult } from './types/fileSystemItem-change-result';
+import type { Folder } from './types/folder';
 
 @ApiTags('v1/filesSystem')
 @Controller('v1/filesSystem')
@@ -98,18 +96,18 @@ export class FilesController {
   @ApiFilesSystemGet()
   async findSlice(
     @CurrentUser('id') currentUserId: UUID,
-    @Query() { parentFolderId }: { parentFolderId: string },
-    @Query() orderFoldersBy: { orderBy: string },
-    @Query() orderFilesBy: { orderBy: string },
+    @Query() { parentFolderId }: ParentFolderIdDto,
+    @Query() { orderFoldersBy }: { orderFoldersBy: string },
+    @Query() { orderFilesBy }: { orderFilesBy: string },
     @Query() { isFolderFirst }: IsFolderFirstDto,
     @Query() { offset, limit }: PaginationParams,
   ): Promise<(File | Folder)[]> {
     return await this.filesSystemService.findSlice(
       currentUserId,
       parentFolderId,
+      isFolderFirst,
       orderFoldersBy,
       orderFilesBy,
-      isFolderFirst,
       offset,
       limit,
     );
@@ -149,8 +147,8 @@ export class FilesController {
   @HttpCode(HttpStatus.OK)
   @ApiFilesSystemGetFindPublicFiles()
   async findPublicFiles(
-    @Query() condition: { condition: string },
-    @Query() orderBy: { orderBy: string },
+    @Query() { condition }: { condition: string },
+    @Query() { orderBy }: { orderBy: string },
     @Query() { offset, limit }: PaginationParams,
   ): Promise<File[]> {
     return await this.filesSystemService.findPublicFiles(
@@ -159,6 +157,18 @@ export class FilesController {
       offset,
       limit,
     );
+  }
+
+  @Get('getFolderPath/:id')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
+  @UseInterceptors(CacheInterceptor)
+  @ApiFilesSystemGetFolderPath()
+  async getFolderPath(
+    @CurrentUser('id') currentUserId: UUID,
+    @Param('id', ParseUUIDPipe) folderId: UUID,
+  ): Promise<string> {
+    return await this.filesSystemService.getFolderPath(currentUserId, folderId);
   }
 
   @Post('createFile/:fileUploadId')
@@ -319,7 +329,7 @@ export class FilesController {
     return await this.filesSystemService.updateMany(currentUserId, updateMany);
   }
 
-  @Delete('deleteFile')
+  @Delete('deleteFile/:fileId')
   @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
   @HttpCode(HttpStatus.OK)
   @CacheOptionInvalidateCache({
@@ -330,12 +340,12 @@ export class FilesController {
   @ApiFilesSystemDeleteDeleteFile()
   async deleteFile(
     @CurrentUser('id') currentUserId: UUID,
-    @Body() { fileId }: DeleteFileDto,
+    @Param('fileId', ParseUUIDPipe) fileId: UUID,
   ): Promise<File> {
     return await this.filesSystemService.deleteFile(currentUserId, fileId);
   }
 
-  @Delete('deleteFolder')
+  @Delete('deleteFolder/:folderId')
   @UseGuards(AccessTokenAuthGuardFromHeadersAndCookies)
   @HttpCode(HttpStatus.OK)
   @CacheOptionInvalidateCache({
@@ -346,7 +356,7 @@ export class FilesController {
   @ApiFilesSystemDeleteDeleteFolder()
   async deleteFolder(
     @CurrentUser('id') currentUserId: UUID,
-    @Body() { folderId }: DeleteFolderDto,
+    @Param('folderId', ParseUUIDPipe) folderId: UUID,
   ): Promise<FileSystemItemChangeResult[]> {
     return await this.filesSystemService.deleteFolder(currentUserId, folderId);
   }

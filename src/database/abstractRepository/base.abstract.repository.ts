@@ -16,11 +16,10 @@ import {
   InferInsertModel,
   isNotNull,
   isNull,
+  sql,
 } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { PgTable, TableConfig } from 'drizzle-orm/pg-core';
-import { NameConflictChoice } from '@/domain/filesSystem/types/upload-name-conflict';
-import { handleNameConflictParams } from '../types/handleNameConflictParams';
 import { RelatedTables, TableWithId } from '../types/orm-types';
 import { OrderBy } from '../types/sort';
 import { WhereCondition } from '../types/where-condition';
@@ -296,7 +295,11 @@ export abstract class BaseAbstractRepository<
           throw new BadRequestException(`Invalid key ${key} in condition`);
         }
 
-        if (value === null) {
+        if (!column) {
+          throw new BadRequestException(`Invalid key ${key} in condition`);
+        }
+
+        if (value === null || value === 'null') {
           return isNull(column);
         }
 
@@ -319,15 +322,14 @@ export abstract class BaseAbstractRepository<
         .$dynamic();
 
       if (orderBy?.length) {
-        const orderExpressions = orderBy.map(({ column, order = 'asc' }) => {
-          const col = this.table[column as keyof Schema];
+        const orderExpressions = orderBy.map(({ key, order = 'asc' }) => {
+          const col = this.table[key as keyof Schema];
 
           if (!(col instanceof Column)) {
             throw new BadRequestException(
-              `Invalid orderBy column ${String(column)}`,
+              `Invalid orderBy column ${String(key)}`,
             );
           }
-
           return order === 'asc' ? asc(col) : desc(col);
         });
 
@@ -376,12 +378,12 @@ export abstract class BaseAbstractRepository<
       let query = this.database.select().from(this.table).$dynamic();
 
       if (orderBy?.length) {
-        const orderExpressions = orderBy.map(({ column, order = 'asc' }) => {
-          const col = this.table[column as keyof Schema];
+        const orderExpressions = orderBy.map(({ key, order = 'asc' }) => {
+          const col = this.table[key as keyof Schema];
 
           if (!(col instanceof Column)) {
             throw new BadRequestException(
-              `Invalid orderBy column ${String(column)}`,
+              `Invalid orderBy column ${String(key)}`,
             );
           }
 
@@ -652,12 +654,12 @@ export abstract class BaseAbstractRepository<
    * @returns Parsed entities.
    */
   public async parsedCondition<T extends object>(
-    condition: { condition: string },
+    condition: string,
     DTO: new () => T,
   ): Promise<T> {
     let parsedCondition: T;
     try {
-      parsedCondition = JSON.parse(condition.condition);
+      parsedCondition = JSON.parse(condition);
     } catch (error) {
       throw new BadRequestException('Invalid JSON format');
     }
@@ -682,17 +684,30 @@ export abstract class BaseAbstractRepository<
    * @returns Parsed entities.
    */
   public async parsedArrayCondition<T extends object>(
-    orderBy: { orderBy: string },
+    condition: string,
     DTO: new () => T,
   ): Promise<T[]> {
     let parsed: any;
     try {
-      parsed = JSON.parse(orderBy.orderBy);
+      parsed = JSON.parse(condition);
     } catch {
       throw new BadRequestException('Invalid JSON format');
     }
 
-    const instances = plainToInstance(DTO, parsed as T[]);
+    if (!Array.isArray(parsed)) {
+      throw new BadRequestException('Expected JSON array');
+    }
+
+    if (parsed.length === 0) {
+      return [];
+    }
+
+    if (!parsed.every((item) => typeof item === 'object' && item !== null)) {
+      throw new BadRequestException('Array must contain objects only');
+    }
+
+    const instances = plainToInstance(DTO, parsed);
+
     const errors = await Promise.all(instances.map((i) => validate(i)));
 
     const allErrors = errors.flat();
@@ -735,67 +750,6 @@ export abstract class BaseAbstractRepository<
     return validatedObject;
   }
 
-  public async handleNameConflict<T extends { id: string }>(
-    params: handleNameConflictParams<T, Schema>,
-  ): Promise<string> {
-    const {
-      parentId,
-      parentField,
-      initialName,
-      nameField,
-      repository,
-      userChoice = NameConflictChoice.RENAME,
-    } = params;
-    let uniqueName = initialName;
-    let innerEntity: T | null = null;
-
-    try {
-      try {
-        const condition = {
-          [parentField]: parentId,
-          [nameField]: uniqueName,
-        } as Partial<T>;
-
-        innerEntity = await repository.findOneByCondition(condition);
-      } catch (error) {
-        if (!(error instanceof NotFoundException)) {
-          throw new InternalServerErrorException(error, { cause: error });
-        }
-      }
-
-      if (!innerEntity) {
-        return uniqueName;
-      }
-
-      if (userChoice === NameConflictChoice.OVERWRITE) {
-        await repository.deleteById(innerEntity.id);
-        return uniqueName;
-      }
-
-      while (true) {
-        uniqueName = this.incrementName(uniqueName);
-
-        try {
-          const condition = {
-            [parentField]: parentId,
-            [nameField]: uniqueName,
-          } as Partial<T>;
-
-          await repository.findOneByCondition(condition);
-        } catch (error) {
-          if (error instanceof NotFoundException) {
-            return uniqueName;
-          }
-          throw new InternalServerErrorException(error, { cause: error });
-        }
-      }
-    } catch (error) {
-      throw new Error(`Failed to handle file conflict: ${error.message}`, {
-        cause: error,
-      });
-    }
-  }
-
   private aggregateResults(results: any[]): Record<string, any[]> {
     const aggregated: Record<string, any[]> = {};
     const uniqueIds: Record<string, Set<string>> = {};
@@ -819,25 +773,5 @@ export abstract class BaseAbstractRepository<
     });
 
     return aggregated;
-  }
-
-  private incrementName(name: string): string {
-    const lastDot = name.lastIndexOf('.');
-
-    const hasExtension = lastDot > 0 && lastDot < name.length - 1;
-
-    const baseWithCounter = hasExtension ? name.slice(0, lastDot) : name;
-
-    const ext = hasExtension ? name.slice(lastDot) : '';
-
-    const match = baseWithCounter.match(/\s\((\d+)\)$/);
-
-    if (match) {
-      const counter = Number(match[1]) + 1;
-      const base = baseWithCounter.replace(/\s\(\d+\)$/, '');
-      return `${base} (${counter})${ext}`;
-    }
-
-    return `${baseWithCounter} (1)${ext}`;
   }
 }

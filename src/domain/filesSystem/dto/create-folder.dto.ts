@@ -1,4 +1,12 @@
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { Transform } from 'class-transformer';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
+import { UUID } from 'crypto';
 import { NameConflictChoice } from '../types/upload-name-conflict';
 
 export class CreateFolderDto {
@@ -6,10 +14,11 @@ export class CreateFolderDto {
   @IsNotEmpty()
   readonly folderName: string;
 
+  @Transform(({ value }) => (value === 'null' ? null : value))
   @IsOptional()
-  @IsString()
+  @IsUUID()
   @IsNotEmpty()
-  readonly parentFolderId?: string;
+  readonly parentFolderId?: UUID | null;
 
   @IsOptional()
   @IsString()

@@ -26,6 +26,7 @@ import { UpdateFileDto } from './dto/update-file.dto';
 import { UpdateFolderDto } from './dto/update-folder.dto';
 import { FilesRepository } from './repository/files.repository';
 import { FoldersRepository } from './repository/folders.repository';
+import { CommonFileSystemService } from './services/commonFileSystemService/commonFileSystemService';
 import { DeleteFileSystemService } from './services/deleteFileSystemService/deleteFileSystemService';
 import { FileTransferService } from './services/fileTransferService/fileTransferService';
 import { PermissionsService } from './services/permissionsService/permissionsService';
@@ -50,6 +51,7 @@ export class FilesSystemService {
     private readonly permissionsService: PermissionsService,
     private readonly updateFileSystemService: UpdateFileSystemService,
     private readonly deleteFileSystemService: DeleteFileSystemService,
+    private readonly commonFileSystemService: CommonFileSystemService,
   ) {}
 
   async createFile(
@@ -76,10 +78,11 @@ export class FilesSystemService {
     createfolderDto: CreateFolderDto,
   ): Promise<Folder> {
     try {
-      const folderName = await this.foldersRepository.handleFolderNameConflict(
-        createfolderDto.parentFolderId,
-        createfolderDto.folderName,
-      );
+      const folderName =
+        await this.commonFileSystemService.handleFolderNameConflict(
+          createfolderDto.parentFolderId,
+          createfolderDto.folderName,
+        );
 
       const folder = await this.foldersRepository.create({
         folderName,
@@ -124,9 +127,9 @@ export class FilesSystemService {
   async findSlice(
     currentUserId: UUID,
     parentFolderId: string | null = null,
-    orderFoldersBy?: { orderBy: string },
-    orderFilesBy?: { orderBy: string },
-    isFolderFirst?: boolean,
+    isFolderFirst: boolean = true,
+    orderFoldersBy?: string,
+    orderFilesBy?: string,
     offset?: number,
     limit?: number,
   ): Promise<(File | Folder)[]> {
@@ -134,15 +137,21 @@ export class FilesSystemService {
 
     async function safeFind<T, D>(
       repo: {
-        parsedArrayCondition: Function;
-        findAllByCondition: Function;
+        parsedArrayCondition: (
+          condition: string,
+          dto: new () => D,
+        ) => Promise<D[]>;
+        findAllByCondition: (condition: unknown, orderBy?: D[]) => Promise<T[]>;
       },
-      orderBy: { orderBy: string } | undefined,
+      orderParam: string | undefined,
       dto: new () => D,
     ): Promise<T[]> {
       try {
-        const parsedOrder = orderBy
-          ? await repo.parsedArrayCondition(orderBy, dto)
+        const hasOrderBy =
+          typeof orderParam === 'string' && orderParam.trim().length > 0;
+
+        const parsedOrder = hasOrderBy
+          ? await repo.parsedArrayCondition(orderParam, dto)
           : undefined;
 
         return await repo.findAllByCondition(baseCondition, parsedOrder);
@@ -175,8 +184,8 @@ export class FilesSystemService {
   }
 
   async findPublicFiles(
-    condition: { condition: string },
-    orderBy?: { orderBy: string },
+    condition: string,
+    orderBy?: string,
     offset?: number,
     limit?: number,
   ): Promise<File[]> {
@@ -187,7 +196,10 @@ export class FilesSystemService {
           FindFilesByConditionsDto,
         );
 
-      const parsedOrderBy = orderBy
+      const hasOrderBy =
+        typeof orderBy === 'string' && orderBy.trim().length > 0;
+
+      const parsedOrderBy = hasOrderBy
         ? await this.filesRepository.parsedArrayCondition<FindFilesSortedDto>(
             orderBy,
             FindFilesSortedDto,
@@ -200,6 +212,34 @@ export class FilesSystemService {
         offset,
         limit,
       );
+    } catch (error) {
+      if (error?.errors[0]?.message) {
+        this.mapGoogleError(error);
+      }
+      throw error;
+    }
+  }
+
+  async getFolderPath(currentUserId: UUID, folderId: UUID): Promise<string> {
+    let path = '';
+    let parentFolderId: string | null;
+    try {
+      const folder = await this.foldersRepository.findOneByCondition({
+        userId: currentUserId,
+        id: folderId,
+      });
+
+      path = folder.folderName;
+      parentFolderId = folder.parentFolderId;
+      while (parentFolderId !== null) {
+        const parentFolder =
+          await this.foldersRepository.findById(parentFolderId);
+
+        path = `${parentFolder.folderName}/${path}`;
+        parentFolderId = parentFolder.parentFolderId;
+      }
+
+      return path;
     } catch (error) {
       if (error?.errors[0]?.message) {
         this.mapGoogleError(error);

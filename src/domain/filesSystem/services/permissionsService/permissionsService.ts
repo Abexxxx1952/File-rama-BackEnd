@@ -7,10 +7,10 @@ import {
 import { UUID } from 'crypto';
 import { drive_v3 } from 'googleapis';
 import { FILES_REPOSITORY, USERS_REPOSITORY } from '@/configs/providersTokens';
+import { CreateFilePermissionsDto } from '@/domain/filesSystem/dto/create-file-permissions';
+import type { File } from '@/domain/filesSystem/types/file';
 import { UsersRepository } from '@/domain/users/repository/users.repository';
-import { CreateFilePermissionsDto } from '../../dto/create-file-permissions';
 import { FilesRepository } from '../../repository/files.repository';
-import { File } from '../../types/file';
 import { GoogleDriveClient } from '../googleDriveClient/googleDriveClient';
 
 @Injectable()

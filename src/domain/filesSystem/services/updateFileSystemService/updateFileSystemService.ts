@@ -15,6 +15,7 @@ import { File } from '../../types/file';
 import { FileSystemItemChangeResult } from '../../types/fileSystemItem-change-result';
 import { Folder } from '../../types/folder';
 import { updateMany } from '../../types/update-many-params';
+import { CommonFileSystemService } from '../commonFileSystemService/commonFileSystemService';
 import { GoogleDriveClient } from '../googleDriveClient/googleDriveClient';
 
 @Injectable()
@@ -27,6 +28,7 @@ export class UpdateFileSystemService {
     @Inject(FOLDERS_REPOSITORY)
     private readonly foldersRepository: FoldersRepository,
     private readonly googleDriveClient: GoogleDriveClient,
+    private readonly commonFileSystemService: CommonFileSystemService,
   ) {}
   async updateFile(
     currentUserId: UUID,
@@ -55,12 +57,15 @@ export class UpdateFileSystemService {
         fileUpdateDto,
         file.fileName,
         file.parentFolderId,
+        file.fileExtension,
       );
 
       if (nameResult) {
         requestBody.name = nameResult;
         dtoCopy.fileName = nameResult;
-        const extensionResult = this.getExtension(nameResult);
+        const extensionResult = this.commonFileSystemService.getExtension(
+          fileUpdateDto.fileName,
+        );
         if (extensionResult !== file.fileExtension) {
           dtoCopy.fileExtension = extensionResult;
         }
@@ -81,7 +86,13 @@ export class UpdateFileSystemService {
         }
       }
 
-      return this.filesRepository.updateFile(currentUserId, dtoCopy);
+      const result = await this.filesRepository.updateFile(
+        currentUserId,
+        dtoCopy,
+      );
+      console.log('result', result);
+
+      return result;
     } catch (error) {
       throw error;
     }
@@ -111,11 +122,15 @@ export class UpdateFileSystemService {
         dtoCopy.folderName = nameResult;
       }
 
-      return await this.foldersRepository.updateByCondition(
+      const result = await this.foldersRepository.updateByCondition(
         { id: updateFolderDto.folderId, userId: currentUserId },
         dtoCopy,
-      )[0];
+      );
+
+      return result[0];
     } catch (error) {
+      console.log('error', error);
+
       throw error;
     }
   }
@@ -222,12 +237,16 @@ export class UpdateFileSystemService {
                 fileToUpdate,
                 file.fileName,
                 file.parentFolderId,
+                file.fileExtension,
               );
 
               if (nameResult) {
                 requestBody.name = nameResult;
                 fileToUpdateCopy.fileName = nameResult;
-                const extensionResult = this.getExtension(nameResult);
+                const extensionResult =
+                  this.commonFileSystemService.getExtension(
+                    fileToUpdate.fileName,
+                  );
                 if (extensionResult !== file.fileExtension) {
                   fileToUpdateCopy.fileExtension = extensionResult;
                 }
@@ -308,22 +327,24 @@ export class UpdateFileSystemService {
             folderToUpdate.parentFolderId ||
             folderToUpdate.parentFolderId === null
           ) {
-            folderName = await this.foldersRepository.handleFolderNameConflict(
-              folderToUpdate.parentFolderId,
-              folderToUpdate.folderName
-                ? folderToUpdate.folderName
-                : folder.folderName,
-            );
+            folderName =
+              await this.commonFileSystemService.handleFolderNameConflict(
+                folderToUpdate.parentFolderId,
+                folderToUpdate.folderName
+                  ? folderToUpdate.folderName
+                  : folder.folderName,
+              );
             if (folderName !== folder.folderName) {
               rest.folderName = folderName;
             }
           }
 
           if (folderToUpdate.folderName && !folderName) {
-            folderName = await this.foldersRepository.handleFolderNameConflict(
-              folder.parentFolderId,
-              folderToUpdate.folderName,
-            );
+            folderName =
+              await this.commonFileSystemService.handleFolderNameConflict(
+                folder.parentFolderId,
+                folderToUpdate.folderName,
+              );
             if (folderName !== folder.folderName) {
               rest.folderName = folderName;
             }
@@ -367,23 +388,33 @@ export class UpdateFileSystemService {
     dto: UpdateFileDto,
     fileName: string,
     fileParentFolderId: string | null,
+    fileExtension: string,
   ): Promise<string | null> {
     const targetParentId =
       dto.parentFolderId !== undefined
         ? dto.parentFolderId
         : fileParentFolderId;
 
-    const targetName = dto.fileName ?? fileName;
+    const targetName =
+      typeof dto.fileName === 'string' && dto.fileName.length > 0
+        ? this.commonFileSystemService.getFileNameWithoutExtension(dto.fileName)
+        : fileName;
 
-    const resolvedName = await this.filesRepository.handleFileNameConflict(
-      targetParentId,
-      targetName,
-    );
+    const targetExtension =
+      typeof dto.fileName === 'string' && dto.fileName.length > 0
+        ? this.commonFileSystemService.getExtension(dto.fileName)
+        : fileExtension;
+
+    const resolvedName =
+      await this.commonFileSystemService.handleFileNameConflict(
+        targetParentId,
+        targetName,
+        targetExtension,
+      );
 
     if (resolvedName === fileName) {
       return null;
     }
-
     return resolvedName;
   }
 
@@ -399,25 +430,16 @@ export class UpdateFileSystemService {
 
     const targetName = dto.folderName ?? folderName;
 
-    const resolvedName = await this.foldersRepository.handleFolderNameConflict(
-      targetParentId,
-      targetName,
-    );
+    const resolvedName =
+      await this.commonFileSystemService.handleFolderNameConflict(
+        targetParentId,
+        targetName,
+      );
 
     if (resolvedName === folderName) {
       return null;
     }
 
     return resolvedName;
-  }
-
-  private getExtension(fileName: string): string | null {
-    const lastDot = fileName.lastIndexOf('.');
-
-    if (lastDot <= 0 || lastDot === fileName.length - 1) {
-      return null;
-    }
-
-    return fileName.slice(lastDot + 1);
   }
 }
