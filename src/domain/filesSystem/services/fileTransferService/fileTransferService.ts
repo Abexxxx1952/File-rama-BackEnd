@@ -115,7 +115,9 @@ export class FileTransferService implements OnModuleInit {
     if (!allowed) {
       throw new BadRequestException('Parallel download limit exceeded');
     }
+
     uploadStarted = true;
+
     try {
       for (const account of user.googleServiceAccounts) {
         if (!account) {
@@ -124,7 +126,7 @@ export class FileTransferService implements OnModuleInit {
 
         const { clientEmail, privateKey, rootFolderId = null } = account;
 
-        driveService = await this.googleDriveClient.authenticate({
+        driveService = this.googleDriveClient.authenticate({
           clientEmail,
           privateKey,
         });
@@ -136,13 +138,6 @@ export class FileTransferService implements OnModuleInit {
         } catch (error) {
           continue;
         }
-
-        const storageQuota = about.data.storageQuota;
-
-        const totalSpace = Number(storageQuota.limit);
-        const usedSpace = Number(storageQuota.usage);
-        const availableSpace = totalSpace - usedSpace;
-
         const fileSize =
           parseInt(request.raw.headers['content-length'], 10) || 0;
 
@@ -150,19 +145,28 @@ export class FileTransferService implements OnModuleInit {
           throw new BadRequestException('File has no length');
         }
 
+        const storageQuota = about.data.storageQuota;
+        const totalSpace = Number(storageQuota.limit);
+        const usedSpace = Number(storageQuota.usage);
+        const availableSpace = totalSpace - usedSpace;
+
         if (availableSpace < fileSize) {
-          continue;
+          throw new BadRequestException(
+            'Not enough available space in Google Drive',
+          );
         }
 
         for await (const part of request.parts()) {
           let fileName: string | null = null;
           let mimeType: string | null = null;
+
           if (part.type === 'field') {
             if (part.fieldname === 'description') {
               description = String(part.value);
             }
             if (part.fieldname === 'conflictChoice') {
               const value = String(part.value);
+
               if (
                 Object.values(NameConflictChoice).includes(
                   value as NameConflictChoice,
@@ -210,9 +214,11 @@ export class FileTransferService implements OnModuleInit {
 
             let receivedBytes = 0;
             let lastSentProgress = 0;
+
             part.file.on('data', (chunk) => {
               receivedBytes += chunk.length;
               const progress = Math.round((receivedBytes / fileSize) * 100);
+
               if (progress > lastSentProgress) {
                 lastSentProgress = progress;
 
@@ -249,6 +255,7 @@ export class FileTransferService implements OnModuleInit {
 
             await pipeline(part.file, async (stream) => {
               const response = await driveService.files.create({
+                supportsAllDrives: true,
                 requestBody: {
                   name: fileName,
                   mimeType: mimeType,
@@ -312,6 +319,7 @@ export class FileTransferService implements OnModuleInit {
         error.message = `Status: ${UploadStatus.FAILED} error: ${error.message}`;
         throw new BadRequestException(error.message);
       }
+
       throw error;
     } finally {
       if (uploadStarted) {
@@ -326,6 +334,7 @@ export class FileTransferService implements OnModuleInit {
     res: FastifyReply,
   ): Promise<void> {
     let driveService: drive_v3.Drive;
+
     try {
       const [user, userFiles] = await Promise.all([
         this.usersRepository.findById(currentUserId),
@@ -374,6 +383,8 @@ export class FileTransferService implements OnModuleInit {
 
       return res.send(fileStream.data);
     } catch (error) {
+      console.log();
+
       throw error;
     }
   }
@@ -381,13 +392,17 @@ export class FileTransferService implements OnModuleInit {
   async streamPublicFile(fileId: UUID, res: FastifyReply): Promise<void> {
     const file = await this.filesRepository.findById(fileId);
 
-    if (!file || file.publicAccessRole === null) {
+    if (
+      !file ||
+      file.publicAccessRole === null ||
+      file.publicAccessRole === undefined
+    ) {
       throw new NotFoundException('File not found');
     }
 
     const PUBLIC_STATIC_SERVER_URL = this.configService.get<string | undefined>(
       'PUBLIC_STATIC_SERVER_URL',
-    );
+    ); // Web server URL for static files, if set, will redirect to this URL instead of streaming directly from the app server.
 
     if (file.fileStaticUrl) {
       const url = new URL(file.fileStaticUrl);
@@ -508,6 +523,7 @@ export class FileTransferService implements OnModuleInit {
             break;
         }
       };
+
       emitter.on(emitterEventName.UPLOAD_PROGRESS, handler);
 
       return () => {
@@ -521,8 +537,10 @@ export class FileTransferService implements OnModuleInit {
     fileUploadId: string,
   ): [EventEmitter, string] {
     const key = `${userId}-${fileUploadId}`;
+
     if (!this.uploadEmitters.has(key)) {
       const emitter = new EventEmitter();
+
       emitter.setMaxListeners(5);
       this.uploadEmitters.set(key, emitter);
     }
@@ -538,11 +556,13 @@ export class FileTransferService implements OnModuleInit {
     }
 
     this.activeUploads.set(userId, current + 1);
+
     return true;
   }
 
   private finishUpload(userId: string) {
     const current = this.activeUploads.get(userId) || 0;
+
     if (current <= 1) {
       this.activeUploads.delete(userId);
     } else {

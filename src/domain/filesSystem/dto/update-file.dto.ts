@@ -1,8 +1,8 @@
-import { Transform } from 'class-transformer';
 import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 import { UUID } from 'crypto';
+import { UpdateBaseDto } from './update-base.dto';
 
-export class UpdateFileDto {
+export class UpdateFileDto extends UpdateBaseDto {
   @IsUUID()
   @IsNotEmpty()
   readonly fileId: UUID;
@@ -11,12 +11,6 @@ export class UpdateFileDto {
   @IsString()
   @IsNotEmpty()
   fileName?: string;
-
-  @Transform(({ value }) => (value === 'null' ? null : value))
-  @IsOptional()
-  @IsUUID()
-  @IsNotEmpty()
-  readonly parentFolderId?: UUID | null;
 
   @IsOptional()
   @IsString()

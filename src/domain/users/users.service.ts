@@ -12,6 +12,7 @@ import * as bcrypt from 'bcrypt';
 import { UUID } from 'crypto';
 import { USERS_REPOSITORY } from '@/configs/providersTokens';
 import { User } from '@/domain/users/types/users';
+import { GoogleDriveClient } from '../filesSystem/services/googleDriveClient/googleDriveClient';
 import { StatsService } from '../stats/stats.service';
 import { CreateUserLocalDto } from './auth/dto/register-local.dto';
 import { EmailConfirmationService } from './auth/email-confirmation/email-confirmation.service';
@@ -39,6 +40,7 @@ export class UsersService {
     @Inject(USERS_REPOSITORY)
     private readonly usersRepository: UsersRepository,
     private readonly emailConfirmationService: EmailConfirmationService,
+    private readonly googleDriveClient: GoogleDriveClient,
     private readonly statsService: StatsService,
   ) {
     this.pepper = this.configService.getOrThrow<string>('PASSWORD_PEPPER');
@@ -202,6 +204,7 @@ export class UsersService {
   async status(email: string): Promise<User> {
     try {
       const user = await this.usersRepository.findOneByCondition({ email });
+
       return user;
     } catch (error) {
       if (error instanceof NotFoundException) {
@@ -281,11 +284,29 @@ export class UsersService {
     googleServiceAccountsExisting: GoogleServiceAccounts[],
   ): GoogleServiceAccounts[] {
     let googleServiceAccountsRequestCopy: GoogleServiceAccounts[] = [];
+
+    function normalizePrivateKey(privateKey: string): string {
+      let key = privateKey.trim();
+
+      if (
+        (key.startsWith('"') && key.endsWith('"')) ||
+        (key.startsWith("'") && key.endsWith("'"))
+      ) {
+        key = key.slice(1, -1);
+      }
+
+      key = key.replace(/\\n/g, '\n');
+
+      key = key.replace(/(-----END PRIVATE KEY-----)\n$/, '$1');
+
+      return key;
+    }
     const googleServiceAccountsExistingCopy = [
       ...googleServiceAccountsExisting,
     ];
     let deletionOffsetIndex = 0;
     let updateAndDeleteCount = 0;
+
     googleServiceAccountsRequest.forEach((reqAccount, reqAccountIndex) => {
       if (
         googleServiceAccountsExisting.length === 0 &&
@@ -293,16 +314,19 @@ export class UsersService {
       ) {
         googleServiceAccountsRequestCopy.push({
           clientEmail: reqAccount.clientEmail,
-          privateKey: reqAccount.privateKey,
+          privateKey: normalizePrivateKey(reqAccount.privateKey),
           rootFolderId: reqAccount.rootFolderId
             ? reqAccount.rootFolderId
             : undefined,
         });
+
         return;
       }
+
       if (
         googleServiceAccountsExisting.length === 0 &&
-        (reqAccount.updateMode === UpdateMode.UPDATE || UpdateMode.DELETE)
+        (reqAccount.updateMode === UpdateMode.UPDATE ||
+          reqAccount.updateMode === UpdateMode.DELETE)
       ) {
         throw new BadRequestException('Account does not exists');
       }
@@ -310,7 +334,7 @@ export class UsersService {
       if (reqAccount.updateMode === UpdateMode.CREATE) {
         googleServiceAccountsRequestCopy[reqAccountIndex] = {
           clientEmail: reqAccount.clientEmail,
-          privateKey: reqAccount.privateKey,
+          privateKey: normalizePrivateKey(reqAccount.privateKey),
           rootFolderId: reqAccount.rootFolderId
             ? reqAccount.rootFolderId
             : undefined,
@@ -321,7 +345,7 @@ export class UsersService {
         reqAccount.updateMode === UpdateMode.UPDATE ||
         reqAccount.updateMode === UpdateMode.DELETE
       ) {
-        updateAndDeleteCount++;
+        updateAndDeleteCount += 1;
       }
 
       googleServiceAccountsExisting.forEach(
@@ -332,17 +356,22 @@ export class UsersService {
             }
             if (reqAccount.updateMode === UpdateMode.UPDATE) {
               googleServiceAccountsExistingCopy[existAccountIndex] = {
-                clientEmail: reqAccount.clientEmail
-                  ? reqAccount.clientEmail
-                  : existAccount.clientEmail,
+                clientEmail: existAccount.clientEmail,
                 privateKey: reqAccount.privateKey
-                  ? reqAccount.privateKey
+                  ? normalizePrivateKey(reqAccount.privateKey)
                   : existAccount.privateKey,
-                rootFolderId: reqAccount.rootFolderId
-                  ? reqAccount.rootFolderId
-                  : existAccount.rootFolderId,
+                rootFolderId:
+                  reqAccount.rootFolderId ?? existAccount.rootFolderId,
               };
-              updateAndDeleteCount--;
+
+              updateAndDeleteCount -= 1;
+
+              this.googleDriveClient.clearAccountCache(
+                existAccount.clientEmail,
+                reqAccount.privateKey
+                  ? normalizePrivateKey(reqAccount.privateKey)
+                  : existAccount.privateKey,
+              );
             }
 
             if (reqAccount.updateMode === UpdateMode.DELETE) {
@@ -350,8 +379,12 @@ export class UsersService {
                 existAccountIndex - deletionOffsetIndex,
                 1,
               );
-              deletionOffsetIndex++;
-              updateAndDeleteCount--;
+              deletionOffsetIndex += 1;
+              updateAndDeleteCount -= 1;
+              this.googleDriveClient.clearAccountCache(
+                existAccount.clientEmail,
+                existAccount.privateKey,
+              );
             }
           }
         },

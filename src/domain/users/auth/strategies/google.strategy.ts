@@ -33,6 +33,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
         profile,
         RegistrationSources.Google,
       );
+
       done(null, user);
     } catch (err) {
       done(err, false);

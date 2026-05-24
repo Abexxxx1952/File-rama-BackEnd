@@ -50,11 +50,13 @@ export class LoggerHelperInterceptor implements NestInterceptor {
       tap({
         next: (data) => {
           const rep = context.switchToHttp().getResponse();
+
           rep.raw.locals.requestData = requestBody;
           rep.raw.locals.responseData = data;
         },
         error: (err) => {
           const rep = context.switchToHttp().getResponse();
+
           rep.raw.locals.requestData = requestBody;
           rep.raw.locals.responseData = err.response || err;
         },

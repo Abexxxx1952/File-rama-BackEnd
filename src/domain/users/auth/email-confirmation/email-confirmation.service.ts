@@ -78,6 +78,7 @@ export class EmailConfirmationService {
   private async generateVerificationToken(email: string): Promise<Token> {
     const token = uuidv4();
     const expiresIn = new Date(new Date().getTime() + 900 * 1000); // 15 minutes
+
     try {
       await this.tokensRepository.deleteByCondition({
         email,

@@ -40,6 +40,7 @@ export class AccessTokenAuthGuardFromHeadersAndCookies {
       });
 
       request.user = this.validate(payload);
+
       return true;
     } catch (error) {
       throw new UnauthorizedException('Invalid token');
@@ -48,9 +49,11 @@ export class AccessTokenAuthGuardFromHeadersAndCookies {
 
   private extractTokenFromHeaders(request: FastifyRequest): string | null {
     const authHeader = request.headers.authorization;
+
     if (authHeader && authHeader.split(' ')[0] === 'Bearer') {
       return authHeader.split(' ')[1];
     }
+
     return null;
   }
 

@@ -11,6 +11,7 @@ export class IsPasswordsMatchingConstraint
 {
   public validate(passwordRepeat: string, args: ValidationArguments) {
     const obj = args.object as CreateUserLocalDto;
+
     return obj.password === passwordRepeat;
   }
 

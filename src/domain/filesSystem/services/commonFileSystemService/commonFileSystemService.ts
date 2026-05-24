@@ -52,6 +52,7 @@ export class CommonFileSystemService {
 
       if (userChoice === NameConflictChoice.OVERWRITE) {
         await this.filesRepository.deleteById(innerEntity.id);
+
         return uniqueName;
       }
 
@@ -109,6 +110,7 @@ export class CommonFileSystemService {
 
       if (userChoice === NameConflictChoice.OVERWRITE) {
         await this.foldersRepository.deleteById(innerEntity.id);
+
         return uniqueName;
       }
 
@@ -148,6 +150,7 @@ export class CommonFileSystemService {
 
   public getFileNameWithoutExtension(fileName: string): string {
     const lastDotIndex = fileName.lastIndexOf('.');
+
     return lastDotIndex === -1 ? fileName : fileName.slice(0, lastDotIndex);
   }
 
@@ -165,6 +168,7 @@ export class CommonFileSystemService {
     if (match) {
       const counter = Number(match[1]) + 1;
       const base = baseWithCounter.replace(/\s\(\d+\)$/, '');
+
       return `${base} (${counter})${ext}`;
     }
 

@@ -28,7 +28,7 @@ export class File implements FileWithOptionalFields {
   fileGoogleDriveClientEmail: string;
   uploadDate: Date;
   @Exclude()
-  publicAccessRole?: publicAccessRole;
+  publicAccessRole?: publicAccessRole | null;
   fileDescription?: string;
   fileStaticUrl?: string;
   fileStaticCreatedAt?: Date;

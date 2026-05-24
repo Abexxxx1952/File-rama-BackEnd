@@ -5,6 +5,7 @@ import { GoogleRecaptchaModule } from '@nestlab/google-recaptcha';
 import { USERS_REPOSITORY } from '@/configs/providersTokens';
 import { getRecaptchaConfig } from '@/configs/recaptcha.config';
 import { DatabaseModule } from '@/database/database.module';
+import { FilesSystemModule } from '../filesSystem/filesSystem.module';
 import { StatsModule } from '../stats/stats.module';
 import { AuthModule } from './auth/auth.module';
 import { EmailConfirmationModule } from './auth/email-confirmation/email-confirmation.module';
@@ -19,6 +20,7 @@ import { UsersService } from './users.service';
     JwtModule,
     AuthModule,
     EmailConfirmationModule,
+    forwardRef(() => FilesSystemModule),
     forwardRef(() => StatsModule),
     GoogleRecaptchaModule.forRootAsync({
       imports: [ConfigModule],

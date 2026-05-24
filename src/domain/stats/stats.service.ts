@@ -1,5 +1,8 @@
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { log } from 'console';
 import { UUID } from 'crypto';
+import { drive_v3, google } from 'googleapis';
 import { STATS_REPOSITORY, USERS_REPOSITORY } from '@/configs/providersTokens';
 import { UsersRepository } from '@/domain/users/repository/users.repository';
 import { GoogleDriveClient } from '../filesSystem/services/googleDriveClient/googleDriveClient';
@@ -10,29 +13,35 @@ import { Stat } from './types/stat';
 
 @Injectable()
 export class StatsService {
+  private readonly TOTAL_ACCOUNT_SIZE: number;
   constructor(
+    private readonly configService: ConfigService,
     @Inject(STATS_REPOSITORY)
     private readonly statsRepository: StatsRepository,
     @Inject(USERS_REPOSITORY)
     private readonly usersRepository: UsersRepository,
     private readonly googleDriveClient: GoogleDriveClient,
-  ) {}
+  ) {
+    this.TOTAL_ACCOUNT_SIZE =
+      this.configService.getOrThrow<number>('TOTAL_ACCOUNT_SIZE');
+  }
   async getGoogleDriveInfo(userId: UUID): Promise<DriveInfoResult[]> {
     const result: DriveInfoResult[] = [];
     let totalSize = 0;
     let usedSize = 0;
+
     try {
       const user = await this.usersRepository.findById(userId);
 
       for (const account of user.googleServiceAccounts) {
-        const { clientEmail, privateKey } = account;
-
-        const driveService = await this.googleDriveClient.authenticate({
-          clientEmail,
-          privateKey,
-        });
+        const { clientEmail, privateKey, rootFolderId } = account;
 
         try {
+          const driveService = this.googleDriveClient.authenticate({
+            clientEmail,
+            privateKey,
+          });
+
           const about = await driveService.about.get({
             fields: 'storageQuota',
           });
@@ -68,6 +77,8 @@ export class StatsService {
 
       return result;
     } catch (error) {
+      console.log(error);
+
       throw error;
     }
   }
@@ -76,7 +87,7 @@ export class StatsService {
     id: UUID,
     googleServiceAccounts: GoogleServiceAccounts[],
   ): Promise<Stat> {
-    const totalSize = googleServiceAccounts.length * 15 * 1024 * 1024 * 1024; // 15GB per account
+    const totalSize = googleServiceAccounts.length * this.TOTAL_ACCOUNT_SIZE;
 
     const initialUserStats = {
       userId: id,
@@ -95,7 +106,7 @@ export class StatsService {
     id: UUID,
     googleServiceAccounts: GoogleServiceAccounts[],
   ): Promise<Stat> {
-    const totalSize = googleServiceAccounts.length * 15 * 1024 * 1024 * 1024; // 15GB per account
+    const totalSize = googleServiceAccounts.length * this.TOTAL_ACCOUNT_SIZE;
 
     const result = await this.statsRepository.updateByCondition(
       { userId: id },

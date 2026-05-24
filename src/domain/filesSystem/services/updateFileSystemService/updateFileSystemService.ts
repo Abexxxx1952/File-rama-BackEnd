@@ -34,6 +34,8 @@ export class UpdateFileSystemService {
     currentUserId: UUID,
     fileUpdateDto: UpdateFileDto,
   ): Promise<File> {
+    console.log('Updating file:', fileUpdateDto);
+
     try {
       const [user, file] = await Promise.all([
         this.usersRepository.findById(currentUserId),
@@ -53,6 +55,7 @@ export class UpdateFileSystemService {
         ...fileUpdateDto,
       };
 
+      console.log('1');
       const nameResult = await this.resolveFileName(
         fileUpdateDto,
         file.fileName,
@@ -66,11 +69,12 @@ export class UpdateFileSystemService {
         const extensionResult = this.commonFileSystemService.getExtension(
           fileUpdateDto.fileName,
         );
+
         if (extensionResult !== file.fileExtension) {
           dtoCopy.fileExtension = extensionResult;
         }
       }
-
+      console.log('2');
       if (fileUpdateDto.fileDescription) {
         requestBody.description = fileUpdateDto.fileDescription;
       }
@@ -81,18 +85,14 @@ export class UpdateFileSystemService {
           requestBody,
         });
 
+        console.log('3');
         if (![200, 204].includes(response.status)) {
           throw new Error('Drive update failed');
         }
       }
+      console.log('4');
 
-      const result = await this.filesRepository.updateFile(
-        currentUserId,
-        dtoCopy,
-      );
-      console.log('result', result);
-
-      return result;
+      return await this.filesRepository.updateFile(currentUserId, dtoCopy);
     } catch (error) {
       throw error;
     }
@@ -141,6 +141,7 @@ export class UpdateFileSystemService {
   ): Promise<FileSystemItemChangeResult[]> {
     let driveService: drive_v3.Drive;
     const result: FileSystemItemChangeResult[] = [];
+
     try {
       const [user, userFiles, userFolders] = await Promise.all([
         this.usersRepository.findById(currentUserId),
@@ -148,6 +149,7 @@ export class UpdateFileSystemService {
         this.foldersRepository.findAllByCondition({ userId: currentUserId }),
         ,
       ]);
+
       const files: Map<
         string,
         (UpdateFileDto & {
@@ -164,10 +166,12 @@ export class UpdateFileSystemService {
 
       updateManyDto.forEach((fileSystemItemToUpdate) => {
         let coincidence = false;
+
         if ('fileId' in fileSystemItemToUpdate) {
           const existFile = userFiles.find((file) => {
             return file.id === fileSystemItemToUpdate.fileId;
           });
+
           if (existFile) {
             const fileObjToMap = {
               ...fileSystemItemToUpdate,
@@ -180,6 +184,7 @@ export class UpdateFileSystemService {
                   .get(existFile.fileGoogleDriveClientEmail)
                   .concat(fileObjToMap)
               : [fileObjToMap];
+
             files.set(existFile.fileGoogleDriveClientEmail, mapValue);
 
             coincidence = true;
@@ -189,6 +194,7 @@ export class UpdateFileSystemService {
           const existFolder = userFolders.find((folder) => {
             return folder.id === fileSystemItemToUpdate.folderId;
           });
+
           if (existFolder) {
             folders.push(fileSystemItemToUpdate);
             coincidence = true;
@@ -224,7 +230,7 @@ export class UpdateFileSystemService {
               const requestBody: drive_v3.Schema$File = {};
 
               const fileToUpdateCopy: UpdateFileDto & {
-                fileExtension?: string | null;
+                fileExtension?: string;
                 fileGoogleDriveClientEmail: string;
                 fileGoogleDriveId: string;
               } = { ...fileToUpdate };
@@ -247,6 +253,7 @@ export class UpdateFileSystemService {
                   this.commonFileSystemService.getExtension(
                     fileToUpdate.fileName,
                   );
+
                 if (extensionResult !== file.fileExtension) {
                   fileToUpdateCopy.fileExtension = extensionResult;
                 }
@@ -357,6 +364,7 @@ export class UpdateFileSystemService {
         const updatedFolder = await this.foldersRepository.updateManyById(
           foldersToUpdateFromDB,
         );
+
         updatedFolder.forEach((folder) => {
           result.push({
             folderId: folder.id,
@@ -378,6 +386,7 @@ export class UpdateFileSystemService {
           });
         }
       }
+
       return result;
     } catch (error) {
       throw error;
@@ -415,6 +424,7 @@ export class UpdateFileSystemService {
     if (resolvedName === fileName) {
       return null;
     }
+
     return resolvedName;
   }
 

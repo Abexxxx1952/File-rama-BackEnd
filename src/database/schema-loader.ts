@@ -1,6 +1,6 @@
+import { AnyPgTable } from 'drizzle-orm/pg-core';
 import * as fs from 'fs';
 import * as path from 'path';
-import { AnyPgTable } from 'drizzle-orm/pg-core';
 
 // Function to recursively find schema files
 function findSchemaFiles(dir: string, fileList: string[] = []): string[] {

@@ -8,6 +8,7 @@ export function getFastifyStatic(
   const STATIC_FILES_PUBLIC_DIR = configService.getOrThrow<string>(
     'STATIC_FILES_PUBLIC_DIR',
   );
+
   return {
     root: join(process.cwd(), STATIC_FILES_PUBLIC_DIR),
     prefix: STATIC_FILES_PUBLIC_DIR,

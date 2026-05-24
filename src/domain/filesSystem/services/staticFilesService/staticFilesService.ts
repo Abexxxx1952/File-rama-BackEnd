@@ -20,6 +20,7 @@ export class StaticFilesService {
       StaticFilesService: 'runInitialCleanup',
     });
     const expiredFilesTotalSize = await this.cleanupStaticFiles();
+
     this.logger.info(`Deleted ${expiredFilesTotalSize} bytes`, {
       StaticFilesService: 'runInitialCleanup',
     });
@@ -30,6 +31,7 @@ export class StaticFilesService {
       StaticFilesService: 'dailyCleanup',
     });
     const expiredFilesTotalSize = await this.cleanupStaticFiles();
+
     this.logger.info(`Deleted ${expiredFilesTotalSize} bytes`, {
       StaticFilesService: 'dailyCleanup',
     });
@@ -37,6 +39,7 @@ export class StaticFilesService {
 
   private async cleanupStaticFiles(): Promise<number> {
     let expiredFilesTotalSize = 0;
+
     try {
       const TTL_HOURS = this.configService.getOrThrow<number>(
         'STATIC_FILES_TTL_HOURS',
@@ -55,8 +58,10 @@ export class StaticFilesService {
           expiredFilesTotalSize += file.fileSize;
           try {
             const fileName = file.fileStaticUrl.split('/').pop();
+
             if (fileName) {
               const filePath = join(process.cwd(), STATIC_DIR, fileName);
+
               await fs.unlink(filePath);
             }
           } catch (err) {
@@ -69,6 +74,7 @@ export class StaticFilesService {
           fileStaticCreatedAt: null,
         });
       }
+
       return expiredFilesTotalSize;
     } catch (err) {
       this.logger.error(err);

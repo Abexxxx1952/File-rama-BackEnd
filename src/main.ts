@@ -23,6 +23,7 @@ async function bootstrap() {
   );
 
   const configService = app.get(ConfigService);
+
   app.enableCors(getCorsOptions(configService));
 
   app.setGlobalPrefix(configService.getOrThrow<string>('PREFIX_URL') || 'api');

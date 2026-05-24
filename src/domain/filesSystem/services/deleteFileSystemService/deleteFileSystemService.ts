@@ -34,6 +34,7 @@ export class DeleteFileSystemService {
   ) {}
   async deleteFile(currentUserId: UUID, fileId: string): Promise<File> {
     let driveService: drive_v3.Drive;
+
     try {
       const [user, file] = await Promise.all([
         this.usersRepository.findById(currentUserId),
@@ -54,6 +55,7 @@ export class DeleteFileSystemService {
 
       if (response.status === 204) {
         await this.statsRepository.decrementFolderCount(user.id);
+
         return await this.filesRepository.deleteById(file.id);
       }
     } catch (error) {
@@ -131,6 +133,7 @@ export class DeleteFileSystemService {
                     fileGoogleDriveId: existFile.fileGoogleDriveId,
                   },
                 ];
+
             files.set(existFile.fileGoogleDriveClientEmail, mapValue);
 
             coincidence = true;
@@ -260,6 +263,7 @@ export class DeleteFileSystemService {
     const filesToDeleteFromDB: string[] = [];
     let deletedFilesAll: File[] = [];
     let deletedFoldersAll: Folder[] = [];
+
     try {
       try {
         files = await this.filesRepository.findAllByCondition({
@@ -278,6 +282,7 @@ export class DeleteFileSystemService {
           string,
           { fileId: string; fileGoogleDriveId: string }[]
         > = new Map();
+
         files.forEach((file) => {
           const mapValue = filesMap.get(file.fileGoogleDriveClientEmail)
             ? filesMap.get(file.fileGoogleDriveClientEmail).concat({
@@ -290,6 +295,7 @@ export class DeleteFileSystemService {
                   fileGoogleDriveId: file.fileGoogleDriveId,
                 },
               ];
+
           filesMap.set(file.fileGoogleDriveClientEmail, mapValue);
         });
 
@@ -314,6 +320,7 @@ export class DeleteFileSystemService {
               }
             },
           );
+
           await Promise.allSettled(executeDeleteFiles);
         }
 
@@ -333,6 +340,7 @@ export class DeleteFileSystemService {
             const deletedFolder = deletedFiles.some((deletedFolder) => {
               deletedFolder.id === folderIdToDelete;
             });
+
             if (!deletedFolder) {
               result.push({
                 folderId: folderIdToDelete,
@@ -375,6 +383,7 @@ export class DeleteFileSystemService {
       }
 
       const deletedFolder = await this.foldersRepository.deleteById(folderId);
+
       result.push({
         folderId: deletedFolder.id,
         status: 'success',

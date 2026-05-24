@@ -72,6 +72,7 @@ export class CacheInterceptor implements NestInterceptor {
     ) {
       return this.handleCaching(context, next, request, cacheOption);
     }
+
     return next.handle();
   }
 
@@ -150,9 +151,12 @@ export class CacheInterceptor implements NestInterceptor {
     try {
       if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
         const keys = Object.keys(obj);
+
         if (keys.length === 0) return '';
+
         return JSON.stringify(obj, keys.sort());
       }
+
       return obj !== undefined ? JSON.stringify(obj) : '';
     } catch (error) {
       throw error;

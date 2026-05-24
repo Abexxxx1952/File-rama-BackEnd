@@ -19,6 +19,7 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
     twoFactorVerificationCode?: LoginLocalUserDto['twoFactorVerificationCode'],
   ): Promise<AttachedUser | { message: string }> {
     const loginDto = plainToClass(LoginLocalUserDto, { email, password });
+
     try {
       await validateOrReject(loginDto);
     } catch (errors) {

@@ -106,11 +106,13 @@ export abstract class BaseAbstractRepository<
         .from(this.table)
         .where(eq(this.table.id, id))
         .limit(1);
+
       if (!result || result.length === 0) {
         throw new NotFoundException(
           `${this.entityName} with ID ${id} not found`,
         );
       }
+
       return result[0] as T;
     } catch (error) {
       if (error instanceof NotFoundException) {
@@ -136,9 +138,11 @@ export abstract class BaseAbstractRepository<
     try {
       const joins = include.map((relation) => {
         const relatedTable = this.relatedTables[relation];
+
         if (!relatedTable) {
           throw new BadRequestException(`Invalid relation: ${relation}`);
         }
+
         return relatedTable;
       });
 
@@ -182,6 +186,7 @@ export abstract class BaseAbstractRepository<
     try {
       const conditions = Object.entries(condition).map(([key, value]) => {
         const column = this.table[key as keyof Schema];
+
         if (column instanceof Column) {
           return value === null ? isNull(column) : eq(column, value);
         } else {
@@ -228,6 +233,7 @@ export abstract class BaseAbstractRepository<
     try {
       const conditions = Object.entries(condition).map(([key, value]) => {
         const column = this.table[key as keyof Schema];
+
         if (column instanceof Column) {
           return value === null ? isNull(column) : eq(column, value);
         } else {
@@ -237,9 +243,11 @@ export abstract class BaseAbstractRepository<
 
       const joins = include.map((relation) => {
         const relatedTable = this.relatedTables[relation];
+
         if (!relatedTable) {
           throw new BadRequestException(`Invalid relation: ${relation}`);
         }
+
         return relatedTable;
       });
 
@@ -247,11 +255,13 @@ export abstract class BaseAbstractRepository<
         .select()
         .from(this.table)
         .where(and(...conditions));
+
       joins.forEach((join) => {
         query.leftJoin(join.table, eq(join.ownField, join.relationField));
       });
 
       const result = await query;
+
       if (!result || result.length === 0) {
         throw new NotFoundException(`${this.entityName} not found`);
       }
@@ -330,6 +340,7 @@ export abstract class BaseAbstractRepository<
               `Invalid orderBy column ${String(key)}`,
             );
           }
+
           return order === 'asc' ? asc(col) : desc(col);
         });
 
@@ -348,6 +359,7 @@ export abstract class BaseAbstractRepository<
       if (!result || result.length === 0) {
         throw new NotFoundException(`${this.entityName}s not found`);
       }
+
       return result as T[];
     } catch (error) {
       if (
@@ -401,6 +413,7 @@ export abstract class BaseAbstractRepository<
       }
 
       const result = await query;
+
       if (!result || result.length === 0) {
         throw new NotFoundException(`${this.entityName}s not found`);
       }
@@ -463,6 +476,7 @@ export abstract class BaseAbstractRepository<
     try {
       const conditions = Object.entries(condition).map(([key, value]) => {
         const column = this.table[key as keyof Schema];
+
         if (column instanceof Column) {
           return eq(column, value);
         } else {
@@ -581,6 +595,7 @@ export abstract class BaseAbstractRepository<
     try {
       const conditions = Object.entries(condition).map(([key, value]) => {
         const column = this.table[key as keyof Schema];
+
         if (column instanceof Column) {
           return eq(column, value);
         } else {
@@ -621,12 +636,14 @@ export abstract class BaseAbstractRepository<
       }
 
       const idColumn = this.table.id;
+
       console.log('idColumn', idColumn);
 
       const result = await this.database
         .delete(this.table)
         .where(inArray(idColumn, ids))
         .returning();
+
       console.log('result', result);
 
       if (!Array.isArray(result) || result.length === 0) {
@@ -658,6 +675,7 @@ export abstract class BaseAbstractRepository<
     DTO: new () => T,
   ): Promise<T> {
     let parsedCondition: T;
+
     try {
       parsedCondition = JSON.parse(condition);
     } catch (error) {
@@ -666,6 +684,7 @@ export abstract class BaseAbstractRepository<
     try {
       parsedCondition = plainToInstance(DTO, parsedCondition);
       const errors = await validate(parsedCondition);
+
       if (errors.length > 0) {
         throw new BadRequestException(
           'Validation failed: ' + errors.toString(),
@@ -674,6 +693,7 @@ export abstract class BaseAbstractRepository<
     } catch (error) {
       throw error;
     }
+
     return parsedCondition;
   }
 
@@ -688,6 +708,7 @@ export abstract class BaseAbstractRepository<
     DTO: new () => T,
   ): Promise<T[]> {
     let parsed: any;
+
     try {
       parsed = JSON.parse(condition);
     } catch {
@@ -711,6 +732,7 @@ export abstract class BaseAbstractRepository<
     const errors = await Promise.all(instances.map((i) => validate(i)));
 
     const allErrors = errors.flat();
+
     if (allErrors.length > 0) {
       throw new BadRequestException(
         'Validation failed: ' + allErrors.toString(),
@@ -741,6 +763,7 @@ export abstract class BaseAbstractRepository<
         const errorMessages = errors
           .map((error) => Object.values(error.constraints).join(', '))
           .join('; ');
+
         throw new BadRequestException(`Validation failed: ${errorMessages}`);
       }
     } catch (error) {

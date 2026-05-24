@@ -42,6 +42,7 @@ export class FilesRepository extends BaseAbstractRepository<
   ): Promise<File> {
     const { fileId, ...rest } = updateFileDto;
 
+    console.log('updateFile', updateFileDto);
     try {
       const result = await this.updateByCondition(
         { id: fileId, userId: currentUserId },

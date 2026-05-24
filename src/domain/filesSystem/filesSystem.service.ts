@@ -13,7 +13,6 @@ import {
   FILES_REPOSITORY,
   FOLDERS_REPOSITORY,
   STATS_REPOSITORY,
-  USERS_REPOSITORY,
 } from '@/configs/providersTokens';
 import { StatsRepository } from '../stats/repository/stats.repository';
 import { CreateFilePermissionsDto } from './dto/create-file-permissions';
@@ -66,7 +65,11 @@ export class FilesSystemService {
         request,
       );
     } catch (error) {
-      if (error?.errors[0]?.message) {
+      if (
+        error?.errors &&
+        Array.isArray(error.errors) &&
+        error.errors[0]?.message
+      ) {
         this.mapGoogleError(error);
       }
       throw error;
@@ -223,6 +226,7 @@ export class FilesSystemService {
   async getFolderPath(currentUserId: UUID, folderId: UUID): Promise<string> {
     let path = '';
     let parentFolderId: string | null;
+
     try {
       const folder = await this.foldersRepository.findOneByCondition({
         userId: currentUserId,

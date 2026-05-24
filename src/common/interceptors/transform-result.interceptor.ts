@@ -18,6 +18,7 @@ export class TransformResultInterceptor<T> implements NestInterceptor {
         if (this.entityClass) {
           return plainToInstance(this.entityClass, result);
         }
+
         return result as T;
       }),
     );

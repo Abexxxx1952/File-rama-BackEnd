@@ -8,6 +8,7 @@ export const getThrottlerConfig = (
   const ttl = configService.getOrThrow<number>('THROTTLER_TTL');
   const limit = configService.getOrThrow<number>('THROTTLER_LIMIT');
   const skipIf = mode === 'production' ? () => false : () => true;
+
   return [
     {
       ttl,

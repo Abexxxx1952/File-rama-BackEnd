@@ -42,6 +42,7 @@ export class LocalAuthGuard {
     }
 
     request.user = user;
+
     return true;
   }
 }

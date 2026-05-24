@@ -38,6 +38,7 @@ export class RefreshTokenAuthGuardFromCookies {
       );
 
       request.user = this.validate(payload, refreshToken);
+
       return true;
     } catch (error) {
       throw new UnauthorizedException('Invalid refresh token');

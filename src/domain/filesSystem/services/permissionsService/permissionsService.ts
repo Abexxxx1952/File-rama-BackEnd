@@ -28,6 +28,7 @@ export class PermissionsService {
     createFilePermissionsDto: CreateFilePermissionsDto,
   ): Promise<File> {
     let driveService: drive_v3.Drive;
+
     try {
       const [user, file] = await Promise.all([
         this.usersRepository.findById(currentUserId),

@@ -42,7 +42,9 @@ export class GoogleAuthGuard implements CanActivate {
 
     if (!code) {
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${this.clientID}&scope=${this.scope.join('%20')}&redirect_uri=${encodeURIComponent(this.callbackURL)}&response_type=code`;
+
       response.redirect(authUrl);
+
       return false;
     }
 

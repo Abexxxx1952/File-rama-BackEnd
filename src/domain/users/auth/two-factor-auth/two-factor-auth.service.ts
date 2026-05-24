@@ -60,6 +60,7 @@ export class TwoFactorAuthService {
       Math.random() * (1000000 - 100000) + 100000,
     ).toString();
     const expiresIn = new Date(new Date().getTime() + 300000); // 5 minutes
+
     try {
       await this.tokensRepository.deleteByCondition({
         email,

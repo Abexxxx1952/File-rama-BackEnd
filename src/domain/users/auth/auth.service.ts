@@ -107,6 +107,7 @@ export class AuthService {
   ): Promise<void> {
     try {
       const tokens = await this.getTokens(currentUser);
+
       await this.updateRtToken(currentUser.email, tokens.refresh_token);
       response.redirect(
         this.authProviderRedirectUrl +
@@ -155,6 +156,7 @@ export class AuthService {
     response: FastifyReply,
   ): Promise<AtRtTokens> {
     let refreshToken: Token;
+
     try {
       await this.usersRepository.findById(currentUser.id);
     } catch (error) {
@@ -185,6 +187,7 @@ export class AuthService {
 
     try {
       const tokens = await this.getTokens(currentUser);
+
       await this.updateRtToken(currentUser.email, tokens.refresh_token);
 
       response.cookie('Authentication_accessToken', tokens.access_token, {
@@ -200,6 +203,7 @@ export class AuthService {
         path: this.refreshTokenPath,
         expires: this.getExpiresTimeRT(),
       });
+
       return {
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
@@ -269,6 +273,7 @@ export class AuthService {
     let parseUserOAuth: ParseUserOAuth;
 
     let existUser: User;
+
     switch (provider) {
       case RegistrationSources.Google: {
         parseUserOAuth = this.parseGoogleUser(profile);
@@ -351,6 +356,7 @@ export class AuthService {
 
   private getExpiresTimeAT(): Date {
     const expiresTime = new Date();
+
     expiresTime.setTime(
       expiresTime.getTime() +
         this.configService.get('JWT_ACCESS_TOKEN_EXPIRATION_TIME') * 1000,
@@ -360,6 +366,7 @@ export class AuthService {
   }
   private getExpiresTimeRT(): Date {
     const expiresTime = new Date();
+
     expiresTime.setTime(
       expiresTime.getTime() + this.accessTokenExpirationTime * 1000,
     );

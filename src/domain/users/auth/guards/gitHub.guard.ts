@@ -41,7 +41,9 @@ export class GitHubAuthGuard implements CanActivate {
 
     if (!code) {
       const authUrl = `https://github.com/login/oauth/authorize?client_id=${this.clientID}&scope=${this.scope.join('%20')}&redirect_uri=${encodeURIComponent(this.callbackURL)}`;
+
       response.redirect(authUrl);
+
       return false;
     }
 

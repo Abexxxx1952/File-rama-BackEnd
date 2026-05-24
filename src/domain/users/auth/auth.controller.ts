@@ -33,6 +33,7 @@ import {
   ApiUsersPostRefresh,
   ApiUsersPostRegistration,
 } from '../../../swagger/users/index';
+import { USER_CHANGE_CACHE_INVALIDATE_PATHS } from '../cache/cache-paths';
 import { UsersService } from '../users.service';
 import { User } from './../types/users';
 import { AuthService } from './auth.service';
@@ -75,7 +76,7 @@ export class AuthController {
   @HttpCode(HttpStatus.CREATED)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/users' + CACHE_INVALIDATE_KEY_FLAG.ALL_PATHS],
+    cacheKey: USER_CHANGE_CACHE_INVALIDATE_PATHS,
   })
   @UseInterceptors(CacheInterceptor)
   @ApiUsersPostRegistration()
@@ -131,7 +132,7 @@ export class AuthController {
   @HttpCode(HttpStatus.MOVED_PERMANENTLY)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/users' + CACHE_INVALIDATE_KEY_FLAG.ALL_PATHS],
+    cacheKey: USER_CHANGE_CACHE_INVALIDATE_PATHS,
   })
   @UseInterceptors(CacheInterceptor)
   @ApiUsersGetLoginGoogleCallback()
@@ -154,7 +155,7 @@ export class AuthController {
   @HttpCode(HttpStatus.MOVED_PERMANENTLY)
   @CacheOptionInvalidateCache({
     cache: CacheOptions.InvalidateCacheByKey,
-    cacheKey: ['/api/v1/users' + CACHE_INVALIDATE_KEY_FLAG.ALL_PATHS],
+    cacheKey: USER_CHANGE_CACHE_INVALIDATE_PATHS,
   })
   @UseInterceptors(CacheInterceptor)
   @ApiUsersGetLoginGitHubCallback()

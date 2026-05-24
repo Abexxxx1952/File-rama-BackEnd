@@ -45,6 +45,7 @@ export class RefreshTokenAuthGuardFromHeadersAndCookies {
       );
 
       request.user = this.validate(payload, refreshToken);
+
       return true;
     } catch (error) {
       throw new UnauthorizedException('Invalid refresh token');
@@ -53,9 +54,11 @@ export class RefreshTokenAuthGuardFromHeadersAndCookies {
 
   private extractTokenFromHeaders(request: FastifyRequest): string | null {
     const authHeader = request.headers.authorization;
+
     if (authHeader && authHeader.split(' ')[0] === 'Bearer') {
       return authHeader.split(' ')[1];
     }
+
     return null;
   }
 

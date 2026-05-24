@@ -7,6 +7,7 @@ export const getCacheConfig = (
   const ttlProd = configService.getOrThrow<number>('CACHE_TTL');
   const mode = configService.getOrThrow<string>('MODE');
   const ttl = mode === 'production' ? ttlProd : 0;
+
   return {
     ttl,
   };
