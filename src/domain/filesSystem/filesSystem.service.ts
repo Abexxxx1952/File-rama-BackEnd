@@ -181,9 +181,11 @@ export class FilesSystemService {
       ? [...folders, ...files]
       : [...files, ...folders];
 
+    const start = offset ?? 0;
+
     return limit !== undefined
-      ? merged.slice(offset, offset + limit)
-      : merged.slice(offset);
+      ? merged.slice(start, start + limit)
+      : merged.slice(start);
   }
 
   async findPublicFiles(

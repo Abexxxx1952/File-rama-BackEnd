@@ -120,7 +120,7 @@ export class CommonFileSystemService {
         try {
           const condition = {
             parentFolderId: parentId,
-            fileName: uniqueName,
+            folderName: uniqueName,
           };
 
           await this.foldersRepository.findOneByCondition(condition);
