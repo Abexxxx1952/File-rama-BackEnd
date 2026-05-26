@@ -6,6 +6,7 @@ import {
   Param,
   Post,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { Recaptcha } from '@nestlab/google-recaptcha';
 import {
   ApiUsersPostPasswordRecoveryRequestPasswordRecovery,
@@ -15,6 +16,7 @@ import { NewPasswordDto } from './dto/new-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { PasswordRecoveryService } from './password-recovery.service';
 
+@ApiTags('v1/auth/password-recovery')
 @Controller('v1/auth/password-recovery')
 export class PasswordRecoveryController {
   constructor(

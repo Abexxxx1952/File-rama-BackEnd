@@ -6,6 +6,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '@/common/decorators/currentUser.decorator';
 import {
   ApiUsersPostEmailConfirmationSendVerificationToken,
@@ -15,6 +16,7 @@ import { AccessTokenAuthGuardFromHeadersAndCookies } from '../guards/access-toke
 import { TokenVerificationDto } from './dto/token-verification.dto';
 import { EmailConfirmationService } from './email-confirmation.service';
 
+@ApiTags('v1/auth/email-confirmation')
 @Controller('v1/auth/email-confirmation')
 export class EmailConfirmationController {
   constructor(

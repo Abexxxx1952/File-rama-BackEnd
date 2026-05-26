@@ -11,6 +11,7 @@ import { validate } from './configs/env.validate';
 import { getThrottlerConfig } from './configs/throttler.config';
 import { DatabaseModule } from './database/database.module';
 import { DomainModule } from './domain/domain.module';
+import { HealthModule } from './health/health.module';
 import { LoggerModule } from './logger/logger.module';
 
 @Module({
@@ -36,6 +37,7 @@ import { LoggerModule } from './logger/logger.module';
     ScheduleModule.forRoot(),
     DatabaseModule,
     DomainModule,
+    HealthModule,
   ],
   controllers: [],
   providers: [
